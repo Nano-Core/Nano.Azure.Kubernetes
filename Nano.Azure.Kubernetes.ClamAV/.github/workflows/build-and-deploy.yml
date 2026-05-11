@@ -1,0 +1,83 @@
+name: Build and Deploy
+on:
+  push
+env:
+  APP_NAME: clamav
+  CHART_VERSION: 3.7.1
+  VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
+  AZURE_GROUP: ${{ vars.AZURE_KUBERNETES_RESOURCE_GROUP }} 
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
+  KUBERNETES_NODEPOOL_COMPUTE: cpu
+  KUBERNETES_NAMESPACE: apps
+  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
+  KUBERNETES_REPLICA_MIN_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
+  KUBERNETES_REPLICA_MAX_COUNT: ${{ github.ref == 'refs/heads/master' && 6 || 3 }}  
+  KUBERNETES_MEMORY_REQUEST: 512Mi
+  KUBERNETES_MEMORY_LIMIT: 1536Mi
+  KUBERNETES_MEMORY_SCALING: 180
+  KUBERNETES_CPU_REQUEST: 150m
+  KUBERNETES_CPU_LIMIT: 450m
+  KUBERNETES_CPU_SCALING: 180
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: ${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure Login
+        shell: pwsh
+        run: |
+          az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
+          az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+          az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
+
+      - name: Deploy ClamAV
+        shell: pwsh
+        run: |
+          Get-Content .kubernetes/clamav-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-values.tmp.yaml;
+
+          $command = @"
+              set -eu
+
+              helm repo add wiremind https://wiremind.github.io/wiremind-helm-charts || exit 1
+              helm repo update
+
+              helm upgrade --install $env:APP_NAME wiremind/clamav --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f clamav-values.tmp.yaml || exit 2
+          "@;
+
+          $result = az aks command invoke `
+              -g $env:AZURE_GROUP `
+              -n $env:KUBERNETES_CLUSTER `
+              --file .kubernetes/clamav-values.tmp.yaml `
+              --command $command `
+              --output json | ConvertFrom-Json;
+
+          echo $result
+
+          if ($result.exitCode -ne 0)
+          {
+              throw "Deploy failed"
+          }
+
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.VERSION }}
+          name: "Release ${{ env.VERSION }}"
+          body: |
+            Version: ${{ env.VERSION }}
+            Commit: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false

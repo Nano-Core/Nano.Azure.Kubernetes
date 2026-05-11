@@ -7,10 +7,12 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
+  * **[Topology Affinity](#topology-affinity)**  
   * **[Durable Quorum Queues](#durable-quorum-queues)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
+  * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -19,7 +21,7 @@ architecture, where messages are published to queues and then consumed by one or
 Protocol), making it highly flexible and suitable for a wide range of use cases. It's widely used for building scalable, distributed systems and microservices due to its reliability, fault 
 tolerance, and ability to handle large volumes of messages efficiently.  
 
-> 📖 Learn more about **[RabbitMQ](https://rabbitmq.com)**.
+> 📖 Learn more about **[RabbitMQ Cluster Operator](https://www.rabbitmq.com/kubernetes/operator/operator-overview)**.
 
 ## Registration
 This deployment provisions a RabbitMQ cluster in AKS.  
@@ -44,6 +46,9 @@ To retrieve the deployed RabbitMQ cluster from the Custom Resource Definition (C
 kubectl get rabbitmqclusters
 ```
 
+### Topology Affinity
+
+
 ### Durable Quorum Queues 
 Each pod is provisioned with a 10Gi persistent volume to ensure durable message storage for queues.
 
@@ -60,6 +65,11 @@ RabbitMQ pods.
 ### Health Probes
 The deployment configures startup, readiness, and liveness probes. These are intentionally set with conservative thresholds to allow sufficient time for cluster stabilization and quorum 
 leader re-election during startup or failover scenarios.
+
+### Horizontal Pod Autoscaler
+A Horizontal Pod Autoscaler (HPA) is intentionally not configured for the RabbitMQ cluster. RabbitMQ is a stateful clustered service, and automatic scaling of broker nodes can cause 
+unnecessary queue rebalancing, leader re-election, and temporary instability. To ensure predictable performance and stable quorum behavior, the cluster uses a fixed replica count. Scaling 
+should instead be handled at the application or consumer level, where stateless workloads can safely scale horizontally.  
 
 ## Dependencies
 RabbitMQ has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

@@ -62,12 +62,14 @@ jobs:
               --file .kubernetes/rabbitmq-load-definition-secret.tmp.yaml `
               --file .kubernetes/rabbitmq-podmonitor.tmp.yaml `
               --command @"
-                kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml || exit 1
+                  set -eu
+  
+                  kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml || exit 1
 
-                kubectl apply -f rabbitmq-cluster.tmp.yaml || exit 2
-                kubectl apply -f rabbitmq-auth-secret.tmp.yaml || exit 3
-                kubectl apply -f rabbitmq-load-definition-secret.tmp.yaml || exit 4
-                kubectl apply -f rabbitmq-podmonitor.tmp.yaml || exit 5
+                  kubectl apply -f rabbitmq-cluster.tmp.yaml || exit 2
+                  kubectl apply -f rabbitmq-auth-secret.tmp.yaml || exit 3
+                  kubectl apply -f rabbitmq-load-definition-secret.tmp.yaml || exit 4
+                  kubectl apply -f rabbitmq-podmonitor.tmp.yaml || exit 5
           "@ --output json | ConvertFrom-Json;
 
           echo $result
