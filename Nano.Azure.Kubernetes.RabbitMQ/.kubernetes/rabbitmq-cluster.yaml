@@ -38,6 +38,9 @@ spec:
             annotations:
               checksum: %CHECKSUM%
           spec:
+            nodeSelector:
+              kubernetes.io/os: linux
+              nodepool.compute: cpu
             securityContext:
               runAsNonRoot: true
               runAsUser: 999
