@@ -1,29 +1,69 @@
 # Nano.Azure.Kubernetes.RabbitMQ
-[![Build and Deploy](https://github.com/Nano-Core/Nano.Azure.Kubernetes.RabbitMQ/actions/workflows/build-and-deploy.yml/badge.svg)](https://github.com/Nano-Core/Nano.Azure.Kubernetes.RabbitMQ/actions/workflows/build-and-deploy.yml)  
-_RabbitMQ is an open-source message broker software that facilitates communication between applications by allowing them to send and receive messages asynchronously. It uses a queue-based architecture, where messages are published to queues and then consumed by one or more consumers. RabbitMQ supports various messaging protocols, including AMQP (Advanced Message Queuing Protocol), making it highly flexible and suitable for a wide range of use cases. It's widely used for building scalable, distributed systems and microservices due to its reliability, fault tolerance, and ability to handle large volumes of messages efficiently._  
+
+> _RabbitMQ cluster for Nano applications providing reliable messaging._
 
 ***
 
-### Deployment
+## Table of Contents
+* **[Summary](#summary)**  
+* **[Registration](#registration)**  
+  * **[Durable Quorum Queues](#durable-quorum-queues)**  
+  * **[Hardened Security](#hardened-security)**  
+  * **[Prometheus Monitoring](#prometheus-monitoring)**  
+  * **[Health Probes](#health-probes)**  
+* **[Dependencies](#dependencies)**  
 
-#### Commands
-* ```kubectl port-forward rabbitmq-0 15672```
- 
-*** 
+## Summary
+RabbitMQ is an open-source message broker software that facilitates communication between applications by allowing them to send and receive messages asynchronously. It uses a queue-based 
+architecture, where messages are published to queues and then consumed by one or more consumers. RabbitMQ supports various messaging protocols, including AMQP (Advanced Message Queuing 
+Protocol), making it highly flexible and suitable for a wide range of use cases. It's widely used for building scalable, distributed systems and microservices due to its reliability, fault 
+tolerance, and ability to handle large volumes of messages efficiently.  
 
-### Dependencies
-* [Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes)
+> 📖 Learn more about **[RabbitMQ](https://rabbitmq.com)**.
 
-*** 
+## Registration
+This deployment provisions a RabbitMQ cluster in AKS.  
 
-### References
-* https://rabbitmq.com
-* https://bitnami.com/stack/rabbitmq/helm
-* https://artifacthub.io/packages/helm/bitnami/rabbitmq
+Before running the GitHub Action, add the following GitHub organization secrets.  
 
-***
+| Secret                                     | Type    | Description                                                |
+| ------------------------------------------ | ------- | ---------------------------------------------------------- |
+| `{{environment}}_RABBITMQ_ADMIN_USERNAME`  | secrets | The username of the primary RabbitMQ admin user.           |
+| `{{environment}}_RABBITMQ_ADMIN_PASSWORD`  | secrets | The password of the primary RabbitMQ admin user.           |
+| `{{environment}}_RABBITMQ_ERLANG_COOKIE`   | secrets | The Erlang cookie used for cluster authentication.         |
 
-  RABBITMQ_ADMIN_USERNAME: rabbitmq_user
-  RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || vars.STAGING_RABBITMQ_ADMIN_PASSWORD }}
-  RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ERLANG_COOKIE || vars.STAGING_RABBITMQ_ERLANG_COOKIE }}
+To access the RabbitMQ cluster locally, use port-forwarding to expose the management UI by running the following command.
 
+```powershell
+kubectl port-forward $env:APP_NAME-cluster-0 15672 -n apps;
+```
+
+To retrieve the deployed RabbitMQ cluster from the Custom Resource Definition (CRD), run.  
+
+```powershell
+kubectl get rabbitmqclusters
+```
+
+### Durable Quorum Queues 
+Each pod is provisioned with a 10Gi persistent volume to ensure durable message storage for queues.
+
+Quorum queues are enabled for the cluster. This improves resiliency, consistency, and high availability across nodes. Be aware that quorum queues use leader-based replication, meaning 
+re-elections may occur during node restarts, which can temporarily impact availability.
+
+### Hardened Security
+The security context is hardened for production use. Privilege escalation is disabled, and all Linux capabilities are dropped to minimize the container’s attack surface.
+
+### Prometheus Monitoring
+The cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS). The deployment creates a `PodMonitor` resource to enable metric scraping and observability of the 
+RabbitMQ pods.  
+
+### Health Probes
+The deployment configures startup, readiness, and liveness probes. These are intentionally set with conservative thresholds to allow sufficient time for cluster stabilization and quorum 
+leader re-election during startup or failover scenarios.
+
+## Dependencies
+RabbitMQ has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
+
+| Dependency                                                                                                                            | Description                          | 
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).  |

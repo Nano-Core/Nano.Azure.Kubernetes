@@ -1,11 +1,14 @@
 name: Build and Deploy
 on:
-  push
+  pull_request:
+    branches:
+      - master 
+  push:
+    branches:
+      - master 
 env:
   APP_NAME: rabbitmq
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
-  HELM_VERSION: 3.7
-  CHART_VERSION: 14.6.7
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
@@ -19,89 +22,60 @@ env:
   KUBERNETES_MEMORY_LIMIT: 384Mi 
   KUBERNETES_CPU_REQUEST: 100m
   KUBERNETES_CPU_LIMIT: 300m
-  RABBITMQ_ADMIN_USERNAME: rabbitmq_user
+  RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ADMIN_USERNAME || vars.STAGING_RABBITMQ_ADMIN_USERNAME }}
   RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || vars.STAGING_RABBITMQ_ADMIN_PASSWORD }}
   RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ERLANG_COOKIE || vars.STAGING_RABBITMQ_ERLANG_COOKIE }}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     concurrency:
       group: ${{ github.repository }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Deploy
+      - name: Azure Login
         shell: pwsh
         run: |
-          sudo az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
-          sudo az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
-          sudo az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
+          az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
+          az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+          az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
 
-          az aks command invoke `
-            -g $env:AZURE_GROUP `
-            -n $env:KUBERNETES_CLUSTER `
-            --command @"
-          \$ErrorActionPreference = 'Stop'
+      - name: Deploy RabbitMQ
+        shell: pwsh
+        run: |
+          $env:CHECKSUM = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes((Get-Content .kubernetes/rabbitmq-cluster.yaml -Raw)))) -Algorithm SHA256).Hash
 
-          Write-Host 'Installing Helm...';
-          apt-get update -y;
-          apt-get install snapd -y;
-          snap install helm --channel=$env:HELM_VERSION --classic;
+          Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
+          Get-Content .kubernetes/rabbitmq-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-auth-secret.tmp.yaml;
+          Get-Content .kubernetes/rabbitmq-load-definition-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
+          Get-Content .kubernetes/rabbitmq-podmonitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-podmonitor.tmp.yaml;
 
-          Write-Host 'Adding Helm repo...';
-          helm repo add bitnami https://charts.bitnami.com/bitnami;
-          helm repo update;
+          $result = az aks command invoke `
+              -g $env:AZURE_GROUP `
+              -n $env:KUBERNETES_CLUSTER `
+              --file .kubernetes/rabbitmq-cluster.tmp.yaml `
+              --file .kubernetes/rabbitmq-auth-secret.tmp.yaml `
+              --file .kubernetes/rabbitmq-load-definition-secret.tmp.yaml `
+              --file .kubernetes/rabbitmq-podmonitor.tmp.yaml `
+              --command @"
+                kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml || exit 1
 
-          Write-Host 'Rendering Kubernetes manifest...'
-          Get-Content .kubernetes/rabbitmq-load-definition-secret.yaml | ForEach-Object { [Environment]::ExpandEnvironmentVariables(\$_) } | Set-Content .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
+                kubectl apply -f rabbitmq-cluster.tmp.yaml || exit 2
+                kubectl apply -f rabbitmq-auth-secret.tmp.yaml || exit 3
+                kubectl apply -f rabbitmq-load-definition-secret.tmp.yaml || exit 4
+                kubectl apply -f rabbitmq-podmonitor.tmp.yaml || exit 5
+          "@ --output json | ConvertFrom-Json;
 
-          Write-Host 'Applying Kubernetes manifest...'
-          kubectl apply -f .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
+          echo $result
 
-          if ($LastExitCode -ne 0) 
+          if ($result.exitCode -ne 0)
           {
-              throw "kubectl apply failed";
+              throw "Deploy failed"
           }
-
-          Write-Host 'Checking Helm release...';
-          \$exists = helm list --namespace $env:KUBERNETES_NAMESPACE --filter $env:APP_NAME;
-
-          \$parameters = @(
-              "--version", $env:CHART_VERSION,
-              "--namespace", $env:KUBERNETES_NAMESPACE,
-              "--set", "replicaCount=$env:KUBERNETES_REPLICA_COUNT",
-              "--set", "podAntiAffinityPreset=hard",
-              "--set", "clustering.forceBoot=true",
-              "--set", "containerSecurityContext.allowPrivilegeEscalation=false",
-              "--set", "auth.username=$env:RABBITMQ_ADMIN_USERNAME",
-              "--set", "auth.password=$env:RABBITMQ_ADMIN_PASSWORD",
-              "--set", "auth.erlangCookie=$env:RABBITMQ_ERLANG_COOKIE",
-              "--set", "nodeSelector.kubernetes\.io\/os=linux",
-              "--set", "nodeSelector.nodepool\.compute=$env:KUBERNETES_NODEPOOL_COMPUTE",
-              "--set", "resources.requests.cpu=$env:KUBERNETES_CPU_REQUEST",
-              "--set", "resources.requests.memory=$env:KUBERNETES_MEMORY_REQUEST",
-              "--set", "resources.limits.cpu=$env:KUBERNETES_CPU_LIMIT",
-              "--set", "resources.limits.memory=$env:KUBERNETES_MEMORY_LIMIT",
-              "--set", "metrics.enabled=true",
-              "--set", "loadDefinition.enabled=true",
-              "--set", "loadDefinition.existingSecret=rabbitmq-load-definition-secret"
-          );
-
-          if (\$exists) 
-          {
-              Write-Host 'Upgrading Helm release...';
-              helm upgrade $env:APP_NAME bitnami/rabbitmq @parameters;
-          }
-          else 
-          {
-              Write-Host 'Installing Helm release...';
-              helm install $env:APP_NAME bitnami/rabbitmq @parameters;
-          }
-          "@ -o none;
 
       - name: GitHub Release
         if: github.ref == 'refs/heads/master'
@@ -112,7 +86,15 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
-          artifacts: "nupkgs/*"
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
+
+      - name: Slack Notification
+        if: always()
+        uses: act10ns/slack@v2
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          config: .github/config/slack.yml
+          status: ${{ job.status }}
+          channel: ${{ vars.SLACK_CHANNEL }}

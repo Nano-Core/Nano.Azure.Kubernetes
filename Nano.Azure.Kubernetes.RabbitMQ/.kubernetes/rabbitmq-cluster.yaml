@@ -1,0 +1,79 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: %APP_NAME%
+  namespace: %KUBERNETES_NAMESPACE%
+spec:
+  replicas: %KUBERNETES_REPLICA_COUNT%
+  rabbitmq:
+    additionalConfig: |
+      default_queue_type = quorum
+      cluster_partition_handling = pause_minority
+    additionalPlugins:
+      - rabbitmq_prometheus
+  persistence:
+    storageClassName: managed-csi
+    storage: 10Gi
+  resources:
+    requests:
+      cpu: %KUBERNETES_CPU_REQUEST%
+      memory: %KUBERNETES_MEMORY_REQUEST%
+    limits:
+      cpu: %KUBERNETES_CPU_LIMIT%
+      memory: %KUBERNETES_MEMORY_LIMIT%
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: %APP_NAME%
+            topologyKey: kubernetes.io/hostname
+  override:
+    statefulSet:
+      spec:
+        template:
+          metadata:
+            annotations:
+              checksum: %CHECKSUM%
+          spec:
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 999
+              runAsGroup: 999
+              fsGroup: 999
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: rabbitmq
+                securityContext:
+                  runAsUser: 999
+                  runAsGroup: 999
+                  privileged: false
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop:
+                      - ALL
+                startupProbe:
+                  tcpSocket:
+                    port: 5672
+                  periodSeconds: 10
+                  failureThreshold: 30
+                readinessProbe:
+                  tcpSocket:
+                    port: 5672
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  initialDelaySeconds: 40
+                  failureThreshold: 6
+                livenessProbe:
+                  tcpSocket:
+                    port: 5672
+                  periodSeconds: 20
+                  timeoutSeconds: 5
+                  initialDelaySeconds: 60
+                  failureThreshold: 3
+  service:
+    type: ClusterIP
