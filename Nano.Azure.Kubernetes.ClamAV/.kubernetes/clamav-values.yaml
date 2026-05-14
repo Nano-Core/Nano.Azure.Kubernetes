@@ -101,8 +101,6 @@ metrics:
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
-  serviceMonitor:
-    enabled: false
 
 persistentVolume:
   enabled: true

@@ -56,10 +56,6 @@ livenessProbe:
 
 prometheus:
   enabled: true
-  servicemonitor:
-    enabled: true
-    path: /metrics
-    interval: 60s
 
 webhook:
   replicaCount: 2
