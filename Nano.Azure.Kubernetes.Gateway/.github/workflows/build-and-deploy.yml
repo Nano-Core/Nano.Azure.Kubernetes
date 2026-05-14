@@ -2,7 +2,7 @@ name: Build and Deploy
 on:
   push
 env:
-  APP_NAME: clamav
+  APP_NAME: public-gateway
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
@@ -12,15 +12,6 @@ env:
   KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: apps
-  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_REPLICA_MIN_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_REPLICA_MAX_COUNT: ${{ github.ref == 'refs/heads/master' && 6 || 3 }}  
-  KUBERNETES_MEMORY_REQUEST: 512Mi
-  KUBERNETES_MEMORY_LIMIT: 1536Mi
-  KUBERNETES_MEMORY_UTILIZATION: 80
-  KUBERNETES_CPU_REQUEST: 150m
-  KUBERNETES_CPU_LIMIT: 450m
-  KUBERNETES_CPU_UTILIZATION: 80
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -40,30 +31,32 @@ jobs:
           az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
           az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
 
-      - name: Deploy ClamAV
+      - name: Deploy
         shell: pwsh
         run: |
-          Get-Content .kubernetes/clamav-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-values.tmp.yaml;
-          Get-Content .kubernetes/clamav-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-service-monitor.tmp.yaml;
+          $env:DNS_ZONE_NAME = az network dns zone list -g $env:AZURE_RESOURCE_GROUP --query [0].name -o tsv;
+
+          Get-Content .kubernetes/gateway.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/gateway.tmp.yaml;
+          Get-Content .kubernetes/blackhole-service.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/blackhole-service.tmp.yaml;
+          Get-Content .kubernetes/blackhole-deployment.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/blackhole-deployment.tmp.yaml;
+          Get-Content .kubernetes/blackhole-httproute-catch-all.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/blackhole-httproute-catch-all.tmp.yaml;
 
           $command = @"
               set -eu
 
-              helm repo add wiremind https://wiremind.github.io/wiremind-helm-charts || exit 1
-              helm repo update || exit 2
-
-              helm upgrade --install $env:APP_NAME wiremind/clamav --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f clamav-values.tmp.yaml || exit 3
-
-              kubectl apply -f clamav-service-monitor.tmp.yaml || exit 4
-
-              kubectl rollout restart statefulset/$env:APP_NAME -n apps || exit 5
+              kubectl apply -f gateway.tmp.yaml || exit 1
+              kubectl apply -f blackhole-service.tmp.yaml || exit 2
+              kubectl apply -f blackhole-deployment.tmp.yaml || exit 3
+              kubectl apply -f blackhole-httproute-catch-all.tmp.yaml || exit 4
           "@;
 
           $result = az aks command invoke `
               -g $env:AZURE_GROUP `
               -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/clamav-values.tmp.yaml `
-              --file .kubernetes/clamav-service-monitor.tmp.yaml `
+              --file .kubernetes/gateway.tmp.yaml `
+              --file .kubernetes/blackhole-service.tmp.yaml `
+              --file .kubernetes/blackhole-deployment.tmp.yaml `
+              --file .kubernetes/blackhole-httproute-catch-all.tmp.yaml `
               --command $command `
               --output json | ConvertFrom-Json;
 

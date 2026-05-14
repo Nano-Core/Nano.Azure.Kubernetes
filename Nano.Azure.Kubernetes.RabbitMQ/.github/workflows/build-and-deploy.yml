@@ -52,7 +52,7 @@ jobs:
           Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
           Get-Content .kubernetes/rabbitmq-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-auth-secret.tmp.yaml;
           Get-Content .kubernetes/rabbitmq-load-definition-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
-          Get-Content .kubernetes/rabbitmq-podmonitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-podmonitor.tmp.yaml;
+          Get-Content .kubernetes/rabbitmq-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-service-monitor.tmp.yaml;
 
           $result = az aks command invoke `
               -g $env:AZURE_GROUP `
@@ -60,7 +60,7 @@ jobs:
               --file .kubernetes/rabbitmq-cluster.tmp.yaml `
               --file .kubernetes/rabbitmq-auth-secret.tmp.yaml `
               --file .kubernetes/rabbitmq-load-definition-secret.tmp.yaml `
-              --file .kubernetes/rabbitmq-podmonitor.tmp.yaml `
+              --file .kubernetes/rabbitmq-service-monitor.tmp.yaml `
               --command @"
                   set -eu
   
@@ -69,7 +69,7 @@ jobs:
                   kubectl apply -f rabbitmq-cluster.tmp.yaml || exit 2
                   kubectl apply -f rabbitmq-auth-secret.tmp.yaml || exit 3
                   kubectl apply -f rabbitmq-load-definition-secret.tmp.yaml || exit 4
-                  kubectl apply -f rabbitmq-podmonitor.tmp.yaml || exit 5
+                  kubectl apply -f rabbitmq-service-monitor.tmp.yaml || exit 5
           "@ --output json | ConvertFrom-Json;
 
           echo $result

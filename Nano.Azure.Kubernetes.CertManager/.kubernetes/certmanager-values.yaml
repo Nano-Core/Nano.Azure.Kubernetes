@@ -1,0 +1,155 @@
+global:
+  nodeSelector:
+    kubernetes.io/os: linux
+    nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
+
+crds:
+  enabled: true
+  keep: true
+
+replicaCount: %KUBERNETES_REPLICA_COUNT%
+
+resources:
+  requests:
+    cpu: %KUBERNETES_CPU_REQUEST%
+    memory: %KUBERNETES_MEMORY_REQUEST%
+  limits:
+    cpu: %KUBERNETES_CPU_LIMIT%
+    memory: %KUBERNETES_MEMORY_LIMIT%
+
+securityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: %APP_NAME%
+          topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: %APP_NAME%
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 8
+
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+    path: /metrics
+    interval: 60s
+
+webhook:
+  replicaCount: 2
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 5
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /healthz
+      port: 9402
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  resources:
+    requests:
+       cpu: 10m
+       memory: 32Mi
+    limits:
+       cpu: 30m
+       memory: 96Mi
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: webhook
+            topologyKey: kubernetes.io/hostname
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: webhook
+
+cainjector:
+  replicaCount: 2
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    failureThreshold: 3
+    timeoutSeconds: 10
+  resources:
+    requests:
+       cpu: 10m
+       memory: 32Mi
+    limits:
+       cpu: 30m
+       memory: 96Mi
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: cainjector
+            topologyKey: kubernetes.io/hostname
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: cainjector

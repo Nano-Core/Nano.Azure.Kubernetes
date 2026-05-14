@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: %CERTIFICATE_ISSUER%
+  namespace: %KUBERNETES_NAMESPACE%
+spec:
+  acme:
+    email: %CERTIFICATE_EMAIL%
+    server: %CERTIFICATE_ISSUER_HOST%
+    privateKeySecretRef:
+      name: %CERTIFICATE_ISSUER%-private-key
+    solvers:
+      - dns01:
+          azureDNS:
+            subscriptionID: %AZURE_SUBSCRIPTION_ID%
+            resourceGroupName: %AZURE_GROUP_DNS%
+            hostedZoneName: %DNS_ZONE_NAME%
+            environment: AzurePublicCloud
+            managedIdentity:
+              clientID: %DNS_ZONE_CLIENT_ID%

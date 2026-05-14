@@ -1,5 +1,5 @@
 apiVersion: azmonitoring.coreos.com/v1
-kind: PodMonitor
+kind: ServiceMonitor
 metadata:
   name: %APP_NAME%-monitor
   namespace: apps
@@ -7,7 +7,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: %APP_NAME%
-  podMetricsEndpoints:
+  endpoints:
     - port: prometheus
       path: /metrics
       interval: 1m

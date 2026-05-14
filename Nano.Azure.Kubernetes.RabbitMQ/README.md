@@ -7,7 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
-  * **[Topology Affinity](#topology-affinity)**  
+  * **[High Availability](#topology-affinity)**  
   * **[Durable Quorum Queues](#durable-quorum-queues)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
@@ -37,17 +37,19 @@ Before running the GitHub Action, add the following GitHub organization secrets.
 To access the RabbitMQ cluster locally, use port-forwarding to expose the management UI by running the following command.
 
 ```powershell
-kubectl port-forward $env:APP_NAME-cluster-0 15672 -n apps;
+kubectl port-forward $env:APP_NAME-cluster-0 15672 -n $env:KUBERNETES_NAMESPACE;
 ```
 
 To retrieve the deployed RabbitMQ cluster from the Custom Resource Definition (CRD), run.  
 
 ```powershell
-kubectl get rabbitmqclusters
+kubectl get rabbitmqclusters -n {{namespace}};
 ```
 
-### Topology Affinity
-
+### High Availability
+The RabbitMQ deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
+and resilience by reducing the risk of multiple RabbitMQ pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
+pods across the cluster whenever possible.  
 
 ### Durable Quorum Queues 
 Each pod is provisioned with a 10Gi persistent volume to ensure durable message storage for queues.
@@ -59,8 +61,8 @@ re-elections may occur during node restarts, which can temporarily impact availa
 The security context is hardened for production use. Privilege escalation is disabled, and all Linux capabilities are dropped to minimize the container’s attack surface.
 
 ### Prometheus Monitoring
-The cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS). The deployment creates a `PodMonitor` resource to enable metric scraping and observability of the 
-RabbitMQ pods.  
+The RabbitMQ cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
+ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
 
 ### Health Probes
 The deployment configures startup, readiness, and liveness probes. These are intentionally set with conservative thresholds to allow sufficient time for cluster stabilization and quorum 

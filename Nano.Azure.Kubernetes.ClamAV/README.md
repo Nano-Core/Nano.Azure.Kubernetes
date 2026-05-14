@@ -1,13 +1,13 @@
 # Nano.Azure.Kubernetes.ClamAV
 
-> _Pluggable ClamAV file anti-virus scanner for Nano web-based applications._
+> _Pluggable ClamAV file anti-virus scanner for Nano applications._
 
 ***
 
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
-  * **[Topology Affinity](#topology-affinity)**  
+  * **[High Availability](#topology-affinity)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
@@ -28,29 +28,49 @@ This deployment provisions ClamAV in AKS.
 To connect to your ClamAV instance from outside the cluster execute the following commands.
 
 ```powershell
-kubectl port-forward clamav-0 3310:3310
+kubectl port-forward $env:APP_NAME-0 3310:3310;
 ```
 
-COMMANDS FOR HELM 
-uninstall
-list
+And here are a few useful `helm` commands.
 
-### Topology Affinity
+```powershell
+helm list -n $env:KUBERNETES_NAMESPACE;
+
+helm status $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
+
+helm uninstall $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
+```
+
+### High Availability
+The ClamAV deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 
+resilience and reduces the risk of multiple instances being impacted by a single node failure. The topology spread configuration also helps balance pod placement across the cluster while 
+still allowing scheduling flexibility when resources are constrained.  
 
 ### Hardened Security
-By defaault the ClamAV Helm chart is hardened and secure. No overrides needed
+The ClamAV Helm chart is already hardened for production use by default, with a secure baseline configuration applied out of the box. No additional overrides are required, as the container 
+runs with restricted privileges and a minimized attack surface. This ensures a secure-by-default deployment suitable for production workloads.  
 
 ### Prometheus Monitoring
-Monitoring enabled for prometheus and exposes `/metrics`.
+Monitoring is enabled for Prometheus and exposes a `/metrics` endpoint for scraping ClamAV runtime and scanning statistics. This allows integration with Kubernetes-native observability 
+stacks such as Prometheus and Grafana for real-time visibility into scanner health, performance, and workload activity. Metrics can be used to detect anomalies, track scan throughput, and 
+monitor resource consumption across replicas. This ensures ClamAV operates as a fully observable security component within the cluster.  
+
+ClamAV uses a `ServiceMonitor` because its metrics are exposed through a stable Service endpoint, allowing Prometheus to reliably scrape them without depending on individual Pod lifecycles 
+or IP changes.  
 
 ### Health Probes
-By defaault the ClamAV Helm chart is configured with startup, readiness and liviness probe. No overrides needed
+The ClamAV Helm chart includes default startup, readiness, and liveness probes to ensure the scanner is correctly initialized and remains operational. These probes help Kubernetes manage 
+pod lifecycle events, automatically restarting unhealthy instances and preventing traffic from being routed to unready pods.  
+
+This deployment applies minor adjustments to the default probe configuration to improve stability and reduce the likelihood of unnecessary restarts during startup and normal operation.
 
 ### Horizontal Pod Autoscaler
-Configured.
+The ClamAV deployment supports Horizontal Pod Autoscaling to dynamically adjust the number of replicas based on resource utilization. This ensures the scanner can scale out during 
+increased workload demand and scale in when usage is low, maintaining efficiency and responsiveness. The autoscaling behavior helps stabilize performance while optimizing cluster 
+resource usage.
 
 ## Dependencies
-RabbitMQ has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
+ClamAV has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
 | Dependency                                                                                                                            | Description                          | 
 | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 

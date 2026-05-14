@@ -1,20 +1,22 @@
 nodeSelector:
   kubernetes.io/os: linux
-  nodepool.compute: cpu
+  nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
 
 replicaCount: %KUBERNETES_REPLICA_COUNT%
 
-installCRDs: true
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 100
+  runAsGroup: 101
+  fsGroup: 101
 
-hpa:
-  enabled: true
-  minReplicas: %KUBERNETES_REPLICA_MIN_COUNT%
-  maxReplicas: %KUBERNETES_REPLICA_MAX_COUNT%
-  cpu: %KUBERNETES_CPU_SCALING%
-  memory: %KUBERNETES_MEMORY_SCALING%
-
-metrics:
-  enabled: true
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
 
 resources:
   requests:
@@ -41,3 +43,67 @@ topologySpreadConstraints:
     labelSelector:
       matchLabels:
         app.kubernetes.io/name: %APP_NAME%
+
+startupProbe:
+  enabled: true  
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 300
+  periodSeconds: 20
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 90
+  periodSeconds: 30
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+hpa:
+  enabled: true
+  minReplicas: %KUBERNETES_REPLICA_MIN_COUNT%
+  maxReplicas: %KUBERNETES_REPLICA_MAX_COUNT%
+  cpu: %KUBERNETES_CPU_UTILIZATION%
+  memory: %KUBERNETES_MEMORY_UTILIZATION%
+
+metrics:
+  enabled: true
+  path: /metrics
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 50m
+      memory: 32Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  serviceMonitor:
+    enabled: false
+
+persistentVolume:
+  enabled: true
+  size: 100Mi

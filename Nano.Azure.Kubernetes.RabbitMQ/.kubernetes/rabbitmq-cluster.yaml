@@ -40,7 +40,7 @@ spec:
           spec:
             nodeSelector:
               kubernetes.io/os: linux
-              nodepool.compute: cpu
+              nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
             securityContext:
               runAsNonRoot: true
               runAsUser: 999

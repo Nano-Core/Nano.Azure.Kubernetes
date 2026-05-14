@@ -2,25 +2,26 @@ name: Build and Deploy
 on:
   push
 env:
-  APP_NAME: clamav
+  APP_NAME: cert-manager
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
+  CHART_VERSION: v1.20.2
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
-  AZURE_GROUP: ${{ vars.AZURE_KUBERNETES_RESOURCE_GROUP }} 
+  AZURE_GROUP: ${{ vars.AZURE_KUBERNETES_RESOURCE_GROUP }} '
+  AZURE_GROUP_DNS: ${{ vars.AZURE_DNS_RESOURCE_GROUP }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: apps
-  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_REPLICA_MIN_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_REPLICA_MAX_COUNT: ${{ github.ref == 'refs/heads/master' && 6 || 3 }}  
-  KUBERNETES_MEMORY_REQUEST: 512Mi
-  KUBERNETES_MEMORY_LIMIT: 1536Mi
-  KUBERNETES_MEMORY_UTILIZATION: 80
-  KUBERNETES_CPU_REQUEST: 150m
-  KUBERNETES_CPU_LIMIT: 450m
-  KUBERNETES_CPU_UTILIZATION: 80
+  KUBERNETES_REPLICA_COUNT: 2
+  KUBERNETES_MEMORY_REQUEST: 128Mi
+  KUBERNETES_MEMORY_LIMIT: 384Mi
+  KUBERNETES_CPU_REQUEST: 50m
+  KUBERNETES_CPU_LIMIT: 150m
+  CERTIFICATE_ISSUER: letsencrypt-prod
+  CERTIFICATE_ISSUER_HOST: "https://acme-v02.api.letsencrypt.org/directory"
+  CERTIFICATE_EMAIL: ${{ vars.CERTIFICATE_EMAIL }}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -39,22 +40,26 @@ jobs:
           az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
           az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
           az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
-
-      - name: Deploy ClamAV
+          
+      - name: Deploy
         shell: pwsh
         run: |
-          Get-Content .kubernetes/clamav-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-values.tmp.yaml;
-          Get-Content .kubernetes/clamav-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-service-monitor.tmp.yaml;
+          $env:DNS_ZONE_ID = az network dns zone list -g $env:AZURE_GROUP_DNS --query [0].id -o tsv;
+          $env:DNS_ZONE_NAME = az network dns zone list -g $env:AZURE_GROUP_DNS --query [0].name -o tsv;
+          $env:DNS_ZONE_CLIENT_ID = az identity list -g $env:AZURE_GROUP_DNS --query [0].clientId -o tsv;
+
+          Get-Content .kubernetes/certmanager-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/certmanager-values.tmp.yaml;
+          Get-Content .kubernetes/certmanager-cluster-issuer.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content ".kubernetes/certmanager-cluster-issuer.tmp.yaml";
+          Get-Content .kubernetes/certmanager-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/certmanager-service-monitor.tmp.yaml;
 
           $command = @"
               set -eu
 
-              helm repo add wiremind https://wiremind.github.io/wiremind-helm-charts || exit 1
-              helm repo update || exit 2
+              helm upgrade --install $env:APP_NAME oci://quay.io/jetstack/charts/cert-manager --atomic --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f certmanager-values.tmp.yaml || exit 1
 
-              helm upgrade --install $env:APP_NAME wiremind/clamav --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f clamav-values.tmp.yaml || exit 3
-
-              kubectl apply -f clamav-service-monitor.tmp.yaml || exit 4
+              kubectl apply -f certmanager-service-account.tmp.yaml || exit 2
+              kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 3
+              kubectl apply -f certmanager-service-monitor.tmp.yaml || exit 4
 
               kubectl rollout restart statefulset/$env:APP_NAME -n apps || exit 5
           "@;
@@ -62,8 +67,9 @@ jobs:
           $result = az aks command invoke `
               -g $env:AZURE_GROUP `
               -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/clamav-values.tmp.yaml `
-              --file .kubernetes/clamav-service-monitor.tmp.yaml `
+              --file .kubernetes/certmanager-values.tmp.yaml `
+              --file .kubernetes/certmanager-cluster-issuer.tmp.yaml `
+              --file .kubernetes/certmanager-service-monitor.tmp.yaml `
               --command $command `
               --output json | ConvertFrom-Json;
 
