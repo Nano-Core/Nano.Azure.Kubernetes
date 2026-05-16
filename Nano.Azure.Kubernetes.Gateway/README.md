@@ -24,9 +24,10 @@ This deployment provisions API Gateway in AKS.
 
 Before running the GitHub Action, add the following GitHub organization vars.  
 
-| Secret               | Type  | Description                                                                                         |
-| -------------------- | ----- | --------------------------------------------------------------------------------------------------- |
-| `CERTIFICATE_EMAIL`  | vars  | The email address used by Let’s Encrypt for certificate issuance notifications and failure alerts.  |
+| Secret                      | Type  | Description                                                                      |
+| --------------------------- | ----- | -------------------------------------------------------------------------------- |
+| `CERTIFICATE_ORGANIZATION`  | vars  | The organization owner of the certificate.                                       |
+| `DOMAIN_NAME`               | vars  | The root domain name for the system. Used to issue a wildcard SSL certificate-   |
 
 To retrieve the deployed public Gateway from the Custom Resource Definition (CRD), run.  
 
@@ -51,7 +52,8 @@ behavior while improving security by preventing unintended exposure of internal 
 ## Dependencies
 Gateway has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                            | Description                                                                     | 
-| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).                                             |
-| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                       | Azure DNS maps external domains to the Kubernetes cluster for traffic routing.  |
+| Dependency                                                                                                                                                                          | Description                                                                     | 
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                | The Azure Kubernetes Service (AKS).                                             |
+| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                                                                     | Azure DNS maps external domains to the Kubernetes cluster for traffic routing.  |
+| **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**  | Kubernetes deployment responsible for issueing and managing SSL certificates.   |

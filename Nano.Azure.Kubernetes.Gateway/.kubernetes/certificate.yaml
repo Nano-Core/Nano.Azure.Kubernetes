@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: %APP_NAME%-certificate
+  namespace: %KUBERNETES_NAMESPACE%
+spec:
+  secretName: %DNS_ZONE_NAME%-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  duration: 2160h
+  renewBefore: 720h
+  subject:
+    organizations:
+    - %CERTIFICATE_ORGANIZATION%
+  dnsNames:
+    - "%DNS_ZONE_NAME%"
+    - "*.%DNS_ZONE_NAME%"
+  privateKey:
+    rotationPolicy: Always  

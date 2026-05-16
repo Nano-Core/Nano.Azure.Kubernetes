@@ -8,8 +8,8 @@ env:
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
-  AZURE_GROUP: ${{ vars.AZURE_KUBERNETES_RESOURCE_GROUP }} '
-  AZURE_GROUP_DNS: ${{ vars.AZURE_DNS_RESOURCE_GROUP }} 
+  AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }}
+  AZURE_GROUP_DNS: ${{ vars.AZURE_RESOURCE_GROUP_DNS }}
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
@@ -19,9 +19,7 @@ env:
   KUBERNETES_MEMORY_LIMIT: 384Mi
   KUBERNETES_CPU_REQUEST: 50m
   KUBERNETES_CPU_LIMIT: 150m
-  CERTIFICATE_ISSUER: letsencrypt-prod
-  CERTIFICATE_ISSUER_HOST: "https://acme-v02.api.letsencrypt.org/directory"
-  CERTIFICATE_EMAIL: ${{ vars.CERTIFICATE_EMAIL }}
+  LETS_ENCRYPT_EMAIL: ${{ vars.LETS_ENCRYPT_EMAIL }}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -39,9 +37,9 @@ jobs:
         run: |
           az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
           az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
-          az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
+          az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
           
-      - name: Deploy
+      - name: Deploy Cert-Manager
         shell: pwsh
         run: |
           $env:DNS_ZONE_ID = az network dns zone list -g $env:AZURE_GROUP_DNS --query [0].id -o tsv;
@@ -57,15 +55,12 @@ jobs:
 
               helm upgrade --install $env:APP_NAME oci://quay.io/jetstack/charts/cert-manager --atomic --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f certmanager-values.tmp.yaml || exit 1
 
-              kubectl apply -f certmanager-service-account.tmp.yaml || exit 2
-              kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 3
-              kubectl apply -f certmanager-service-monitor.tmp.yaml || exit 4
-
-              kubectl rollout restart statefulset/$env:APP_NAME -n apps || exit 5
+              kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 2
+              kubectl apply -f certmanager-service-monitor.tmp.yaml || exit 3
           "@;
 
           $result = az aks command invoke `
-              -g $env:AZURE_GROUP `
+              -g $env:AZURE_GROUP_KUBERNETES `
               -n $env:KUBERNETES_CLUSTER `
               --file .kubernetes/certmanager-values.tmp.yaml `
               --file .kubernetes/certmanager-cluster-issuer.tmp.yaml `
@@ -77,7 +72,35 @@ jobs:
 
           if ($result.exitCode -ne 0)
           {
-              throw "Deploy failed"
+              throw "Deploy Cert-Manager Failed"
+          }
+
+      - name: Create DNS Zone Credentials
+        shell: pwsh
+        run: |
+          $env:APP_NAME_IDENTITY = az identity list --resource-group $env:AZURE_GROUP_DNS --query [0].name -o tsv;
+          $env:APP_NAME_IDENTITY_CREDENTIAL = $env:APP_NAME_IDENTITY + "-certmanager";
+          $env:KUBERNETES_ISSUER_URL = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].[oidcIssuerProfile.issuerUrl] -o tsv;
+          $env:SUBJECT = "system:serviceaccount:" + $env:KUBERNETES_NAMESPACE + ":cert-manager";
+
+          $existing = az identity federated-credential list `
+              -g $env:AZURE_GROUP_DNS `
+              --identity-name $env:APP_NAME_IDENTITY `
+              --query "[?issuer=='$env:KUBERNETES_ISSUER_URL' && subject=='$env:SUBJECT'] | [0].name" -o tsv;
+
+          if (-not $existing) 
+          {
+              az identity federated-credential create `
+                  -g $env:AZURE_GROUP_DNS `
+                  -n $env:APP_NAME_IDENTITY_CREDENTIAL `
+                  --identity-name $env:APP_NAME_IDENTITY `
+                  --issuer $env:KUBERNETES_ISSUER_URL `
+                  --subject $env:SUBJECT;
+
+              if ($LastExitCode -ne 0)
+              { 
+                  throw "Create DNS Zone Credentials Failed";
+              }
           }
 
       - name: GitHub Release

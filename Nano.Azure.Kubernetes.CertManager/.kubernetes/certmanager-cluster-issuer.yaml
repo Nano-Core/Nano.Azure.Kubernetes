@@ -1,14 +1,14 @@
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: %CERTIFICATE_ISSUER%
+  name: letsencrypt-prod
   namespace: %KUBERNETES_NAMESPACE%
 spec:
   acme:
-    email: %CERTIFICATE_EMAIL%
-    server: %CERTIFICATE_ISSUER_HOST%
+    email: %LETS_ENCRYPT_EMAIL%
+    server: "https://acme-v02.api.letsencrypt.org/directory"
     privateKeySecretRef:
-      name: %CERTIFICATE_ISSUER%-private-key
+      name: letsencrypt-prod-private-key
     solvers:
       - dns01:
           azureDNS:

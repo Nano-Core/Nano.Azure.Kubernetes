@@ -12,7 +12,7 @@ env:
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
-  AZURE_GROUP: ${{ vars.AZURE_KUBERNETES_RESOURCE_GROUP }} 
+  AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
@@ -42,7 +42,7 @@ jobs:
         run: |
           az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
           az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
-          az aks get-credentials -g $env:AZURE_GROUP -n $env:KUBERNETES_CLUSTER -o none;
+          az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
 
       - name: Deploy RabbitMQ
         shell: pwsh
@@ -55,7 +55,7 @@ jobs:
           Get-Content .kubernetes/rabbitmq-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-service-monitor.tmp.yaml;
 
           $result = az aks command invoke `
-              -g $env:AZURE_GROUP `
+              -g $env:AZURE_GROUP_KUBERNETES `
               -n $env:KUBERNETES_CLUSTER `
               --file .kubernetes/rabbitmq-cluster.tmp.yaml `
               --file .kubernetes/rabbitmq-auth-secret.tmp.yaml `

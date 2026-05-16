@@ -8,7 +8,7 @@ crds:
   keep: true
 
 replicaCount: %KUBERNETES_REPLICA_COUNT%
-
+  
 resources:
   requests:
     cpu: %KUBERNETES_CPU_REQUEST%
@@ -56,6 +56,9 @@ livenessProbe:
 
 prometheus:
   enabled: true
+
+podLabels:
+  azure.workload.identity/use: "true"
 
 webhook:
   replicaCount: 2
@@ -120,12 +123,6 @@ cainjector:
       drop:
       - ALL
     readOnlyRootFilesystem: true
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 30
-    failureThreshold: 3
-    timeoutSeconds: 10
   resources:
     requests:
        cpu: 10m

@@ -27,9 +27,9 @@ This deployment provisions Cert-Manager in AKS.
 
 Before running the GitHub Action, add the following GitHub organization vars.  
 
-| Secret               | Type  | Description                                                                                         |
-| -------------------- | ----- | --------------------------------------------------------------------------------------------------- |
-| `CERTIFICATE_EMAIL`  | vars  | The email address used by Let’s Encrypt for certificate issuance notifications and failure alerts.  |
+| Secret                | Type  | Description                                                                                         |
+| --------------------- | ----- | --------------------------------------------------------------------------------------------------- |
+| `LETS_ENCRYPT_EMAIL`  | vars  | The email address used by Let’s Encrypt for certificate issuance notifications and failure alerts.  |
 
 Here are a few useful `helm` commands.
 
@@ -74,3 +74,4 @@ Cert-Manager has the following dependencies that must be deployed or otherwise s
 | Dependency                                                                                                                            | Description                          | 
 | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
 | **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).  |
+| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                       | The Azure DNS Service.               |
