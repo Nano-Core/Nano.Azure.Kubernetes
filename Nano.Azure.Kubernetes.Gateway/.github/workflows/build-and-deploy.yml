@@ -60,9 +60,6 @@ jobs:
               --file .kubernetes/application-load-balancer.tmp.yaml `
               --file .kubernetes/gateway.tmp.yaml `
               --file .kubernetes/certificate.tmp.yaml `
-              --file .kubernetes/blackhole-service.tmp.yaml `
-              --file .kubernetes/blackhole-deployment.tmp.yaml `
-              --file .kubernetes/blackhole-httproute-catch-all.tmp.yaml `
               --command $command `
               --output json | ConvertFrom-Json;
 
