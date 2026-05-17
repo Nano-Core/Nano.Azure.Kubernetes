@@ -42,20 +42,20 @@ jobs:
       - name: Deploy Cert-Manager
         shell: pwsh
         run: |
-          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json;
           $clientId = az identity list -g $env:AZURE_GROUP_DNS --query [0].clientId -o tsv;
+          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query name;
 
           $env:CLUSTER_ISSUER_SOLVERS = @(
-              foreach ($zone in $zones) {
+              foreach ($zoneName in $zoneNames) {
           @"
                 - selector:
                     dnsZones:
-                      - $($zone.name)
+                      - $($zoneName)
                   dns01:
                     azureDNS:
                       subscriptionID: $($env:AZURE_SUBSCRIPTION_ID)
                       resourceGroupName: $($env:AZURE_GROUP_DNS)
-                      hostedZoneName: $($zone.name)
+                      hostedZoneName: $($zoneName)
                       environment: AzurePublicCloud
                       managedIdentity:
                         clientID: $clientId
@@ -89,7 +89,7 @@ jobs:
 
           if ($result.exitCode -ne 0)
           {
-              throw "Deploy Cert-Manager Failed"
+              throw "error"
           }
 
       - name: Create DNS Zone Credentials
@@ -116,7 +116,7 @@ jobs:
 
               if ($LastExitCode -ne 0)
               { 
-                  throw "Create DNS Zone Credentials Failed";
+                  throw "error";
               }
           }
 

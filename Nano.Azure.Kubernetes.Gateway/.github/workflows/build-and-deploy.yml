@@ -14,7 +14,6 @@ env:
   KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: apps
-  SUB_DOMAIN: a
   CERTIFICATE_ORGANIZATION: ${{ vars.CERTIFICATE_ORGANIZATION }}
 jobs:
   build-and-deploy:
@@ -39,18 +38,18 @@ jobs:
         shell: pwsh
         run: |
           $env:VNET_NAME = az network vnet list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --query [0].name -o tsv;
-          $env:ALB_SUBNET_ID = az network vnet subnet show -n aks-subnet-alb -g $env:AZURE_GROUP_KUBERNETES_ASSETS --vnet-name $env:VNET_NAME --query id --output tsv;
+          $env:ALB_SUBNET_ID = az network vnet subnet show -n aks-subnet-alb -g $env:AZURE_GROUP_KUBERNETES_ASSETS --vnet-name $env:VNET_NAME --query id -o tsv;
 
-          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json
+          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query name;
           
-          $dnsNames = foreach ($zone in $zones) {
-              @(
-                  $zone.name,
-                  "*.$($zone.name)"
-              )
-          };
-
-          $env:CERTIFICATE_DNS_NAMES = $dnsNames | ConvertTo-Json -Depth 20 -Compress
+          $env:CERTIFICATE_DNS_NAMES = @(
+              foreach ($zoneName in $zoneNames) {
+          @"
+              - $($zoneName),
+                *.$($zoneName)
+          "@
+              }
+          ) -join "`n";
 
           Get-Content .kubernetes/application-load-balancer.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/application-load-balancer.tmp.yaml;
           Get-Content .kubernetes/gateway.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/gateway.tmp.yaml;
@@ -80,19 +79,31 @@ jobs:
               throw "error";
           }
 
-      - name: Create DNS CNAME Record
+      - name: Create DNS CNAME Records
         shell: pwsh
         run: |
-          $env:ALB_NAME = az network alb list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --query [0].name -o tsv;
-          $env:ALB_FQDN = az network alb frontend list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --alb-name $env:ALB_NAME --query [0].fqdn;
+          az config set extension.dynamic_install_allow_preview=true;
 
-          az network dns record-set cname set-record `
-              -g $env:AZURE_GROUP_DNS `
-              -z $env:DNS_ZONE_NAME `
-              --record-set-name * `
-              --cname $env:ALB_FQDN `
-              --ttl 3600 `
-              --if-none-match;
+          $env:ALB_NAME = az network alb list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --query [0].name -o tsv;
+          $env:ALB_FQDN = az network alb frontend list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --alb-name $env:ALB_NAME --query [0].fqdn -o tsv;
+
+          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query [].name;
+
+          foreach ($zoneName in $zoneNames) 
+          {
+              az network dns record-set cname set-record `
+                  -g $env:AZURE_GROUP_DNS `
+                  -z $zoneName `
+                  --record-set-name * `
+                  --cname $env:ALB_FQDN `
+                  --ttl 3600 `
+                  --if-none-match;
+          }
+
+          if ($result.exitCode -ne 0)
+          {
+              throw "error";
+          }
  
       - name: GitHub Release
         if: github.ref == 'refs/heads/master'

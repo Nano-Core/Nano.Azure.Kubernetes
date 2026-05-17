@@ -1,6 +1,6 @@
 # Nano.Azure.Kubernetes.CertManager
 
-> _Cert Manager deployment for managing SSL certificates in Nano applications._
+> _Cert Manager deployment for managing SSL certificates for Nano applications._
 
 ***
 
@@ -19,18 +19,19 @@ certificates from various Certificate Authorities (CAs) like Let's Encrypt and H
 certificates, issuers, and certificate requests. It supports a range of certificate types and automates tasks such as certificate renewal and distribution, enhancing security and reducing 
 administrative overhead. By automating these processes, CertManager helps ensure that applications and services within a Kubernetes environment maintain secure, up-to-date encryption.
 
-> 📖 Learn more about **[Cert-Manager](https://cert-manager.io)** or the [Cert-Manager Helm Chart](https://artifacthub.io/packages/helm/cert-manager/cert-manager).  
-> 📖 Also learn more about the **[Lets-Encrypt](https://letsencrypt.org)** certificate authority.
+> 📖 Learn more about **[Cert-Manager](https://cert-manager.io)** and the **[Cert-Manager Helm Chart](https://artifacthub.io/packages/helm/cert-manager/cert-manager)**.  
 
-https://cert-manager.io/docs/tutorials/getting-started-aks-letsencrypt/
-https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-cert-manager-lets-encrypt-gateway-api
-
-https://crt.sh/?q={domain-name} 
-https://www.ssllabs.com/ssltest/analyze.html?d={domain-name}&hideResults=on
-
+To verify issued certificates, you can use [crt.sh](https://crt.sh/) by searching for `{domain-name}`.  
+To assess the security level and configuration quality of a certificate, you can use the [SSL Labs SSL Test](https://www.ssllabs.com/ssltest/analyze.html?d={domain-name}&hideResults=on).  
 
 ## Registration
 This deployment provisions Cert-Manager in AKS.  
+
+The deployment is based on the cert-manager tutorial **[Getting started with cert-manager on Azure Kubernetes Service (AKS) and Let’s Encrypt](https://cert-manager.io/docs/tutorials/getting-started-aks-letsencrypt)**, 
+available in the official cert-manager documentation, and Microsoft’s guide **[Using cert-manager with Let’s Encrypt and Gateway API on Azure Application Gateway for Containers](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-cert-manager-lets-encrypt-gateway-api)**.  
+
+It works in conjunction with [Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns) to issue certificates using the DNS-01 challenge method and 
+supports any number of domain names within a single certificate.  
 
 Before running the GitHub Action, add the following GitHub organization secrets.  
 
@@ -38,7 +39,7 @@ Before running the GitHub Action, add the following GitHub organization secrets.
 | --------------------- | -------- | --------------------------------------------------------------------------------------------------- |
 | `LETS_ENCRYPT_EMAIL`  | secrets  | The email address used by Let’s Encrypt for certificate issuance notifications and failure alerts.  |
 
-Here are a few useful `helm` commands.
+Here are some useful `helm` commands for inspecting and managing the installation.  
 
 ```powershell
 helm list -n $env:KUBERNETES_NAMESPACE;
@@ -48,7 +49,7 @@ helm status $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
 helm uninstall $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
 ```
 
-Also when monitoring certificate issueing: 
+When monitoring certificate issuance, the following commands are useful for tracking progress and diagnosing failures.  
 
 ```powershell
 kubectl get certificaterequests -n $env:KUBERNETES_NAMESPACE;
@@ -57,7 +58,6 @@ kubectl get orders -n $env:KUBERNETES_NAMESPACE;
 
 kubectl get challenges -n $env:KUBERNETES_NAMESPACE;
 ```
-
 
 ### High Availability
 The Cert-Manger deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 
