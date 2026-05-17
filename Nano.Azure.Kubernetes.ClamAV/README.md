@@ -23,7 +23,7 @@ cybersecurity. Widely used in both personal and enterprise environments, ClamAV 
 > 📖 Learn more about **[ClamAV](https://docs.clamav.net)** or the [ClamAV Helm Chart](https://artifacthub.io/packages/helm/wiremind/clamav).
 
 ## Registration
-This deployment provisions ClamAV in AKS.  
+This deployment provisions ClamAV in Kubernetes.  
 
 To connect to your ClamAV instance from outside the cluster execute the following commands.
 

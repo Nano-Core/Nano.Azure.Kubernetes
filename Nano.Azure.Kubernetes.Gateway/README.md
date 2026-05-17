@@ -24,12 +24,6 @@ splitting, and multi-protocol workloads.
 ## Registration
 This deployment provisions an API Gateway and load balancer in Kubernetes, and also creates a TLS certificate.  
 
-Before running the GitHub Action, add the following GitHub organization vars.  
-
-| Secret                      | Type  | Description                                                                      |
-| --------------------------- | ----- | -------------------------------------------------------------------------------- |
-| `CERTIFICATE_ORGANIZATION`  | vars  | The organization owner of the certificate.                                       |
-
 To retrieve the deployed public Gateway from the Custom Resource Definition (CRD), run.  
 
 ```powershell

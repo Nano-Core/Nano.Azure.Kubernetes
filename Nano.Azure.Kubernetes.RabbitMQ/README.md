@@ -24,7 +24,7 @@ tolerance, and ability to handle large volumes of messages efficiently.
 > 📖 Learn more about **[RabbitMQ Cluster Operator](https://www.rabbitmq.com/kubernetes/operator/operator-overview)**.
 
 ## Registration
-This deployment provisions a RabbitMQ cluster in AKS.  
+This deployment provisions a RabbitMQ cluster in Kubernetes.  
 
 Before running the GitHub Action, add the following GitHub organization secrets.  
 
