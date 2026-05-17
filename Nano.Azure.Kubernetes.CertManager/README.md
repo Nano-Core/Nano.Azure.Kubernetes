@@ -22,14 +22,21 @@ administrative overhead. By automating these processes, CertManager helps ensure
 > 📖 Learn more about **[Cert-Manager](https://cert-manager.io)** or the [Cert-Manager Helm Chart](https://artifacthub.io/packages/helm/cert-manager/cert-manager).  
 > 📖 Also learn more about the **[Lets-Encrypt](https://letsencrypt.org)** certificate authority.
 
+https://cert-manager.io/docs/tutorials/getting-started-aks-letsencrypt/
+https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-cert-manager-lets-encrypt-gateway-api
+
+https://crt.sh/?q={domain-name} 
+https://www.ssllabs.com/ssltest/analyze.html?d={domain-name}&hideResults=on
+
+
 ## Registration
 This deployment provisions Cert-Manager in AKS.  
 
-Before running the GitHub Action, add the following GitHub organization vars.  
+Before running the GitHub Action, add the following GitHub organization secrets.  
 
-| Secret                | Type  | Description                                                                                         |
-| --------------------- | ----- | --------------------------------------------------------------------------------------------------- |
-| `LETS_ENCRYPT_EMAIL`  | vars  | The email address used by Let’s Encrypt for certificate issuance notifications and failure alerts.  |
+| Secret                | Type     | Description                                                                                         |
+| --------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `LETS_ENCRYPT_EMAIL`  | secrets  | The email address used by Let’s Encrypt for certificate issuance notifications and failure alerts.  |
 
 Here are a few useful `helm` commands.
 
@@ -40,6 +47,17 @@ helm status $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
 
 helm uninstall $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
 ```
+
+Also when monitoring certificate issueing: 
+
+```powershell
+kubectl get certificaterequests -n $env:KUBERNETES_NAMESPACE;
+
+kubectl get orders -n $env:KUBERNETES_NAMESPACE;
+
+kubectl get challenges -n $env:KUBERNETES_NAMESPACE;
+```
+
 
 ### High Availability
 The Cert-Manger deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 
@@ -61,6 +79,8 @@ monitor resource consumption across replicas. This ensures CertManager operates 
 
 Cert-manager uses a `ServiceMonitor` because its metrics are exposed through stable Kubernetes Services backed by long-running controller, webhook, and cainjector Deployments, which Prometheus 
 is designed to scrape reliably via service endpoints. This avoids pod-level churn and ensures consistent monitoring even during rollouts, rescheduling, or scaling events.  
+
+> ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
 
 ### Health Probes
 The Cert-Manager Helm chart includes default readiness and liveness probes to ensure the service is properly initialized and remains operational. This deployment applies minor adjustments to 

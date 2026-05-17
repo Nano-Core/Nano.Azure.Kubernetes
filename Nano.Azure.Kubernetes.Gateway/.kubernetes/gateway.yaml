@@ -20,4 +20,4 @@ spec:
         certificateRefs:
           - kind: Secret
             group: ""
-            name: %DNS_ZONE_NAME%-tls
+            name: %APP_NAME%-tls

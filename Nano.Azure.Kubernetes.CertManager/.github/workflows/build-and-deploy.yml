@@ -19,7 +19,7 @@ env:
   KUBERNETES_MEMORY_LIMIT: 384Mi
   KUBERNETES_CPU_REQUEST: 50m
   KUBERNETES_CPU_LIMIT: 150m
-  LETS_ENCRYPT_EMAIL: ${{ vars.LETS_ENCRYPT_EMAIL }}
+  LETS_ENCRYPT_EMAIL: ${{ secrets.LETS_ENCRYPT_EMAIL }}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -42,13 +42,7 @@ jobs:
       - name: Deploy Cert-Manager
         shell: pwsh
         run: |
-          $env:DNS_ZONE_ID = az network dns zone list -g $env:AZURE_GROUP_DNS --query [0].id -o tsv;
-          $env:DNS_ZONE_NAME = az network dns zone list -g $env:AZURE_GROUP_DNS --query [0].name -o tsv;
-          $env:DNS_ZONE_CLIENT_ID = az identity list -g $env:AZURE_GROUP_DNS --query [0].clientId -o tsv;
-
           Get-Content .kubernetes/certmanager-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/certmanager-values.tmp.yaml;
-          Get-Content .kubernetes/certmanager-cluster-issuer.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content ".kubernetes/certmanager-cluster-issuer.tmp.yaml";
-          Get-Content .kubernetes/certmanager-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/certmanager-service-monitor.tmp.yaml;
 
           $command = @"
               set -eu
@@ -56,15 +50,12 @@ jobs:
               helm upgrade --install $env:APP_NAME oci://quay.io/jetstack/charts/cert-manager --atomic --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f certmanager-values.tmp.yaml || exit 1
 
               kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 2
-              kubectl apply -f certmanager-service-monitor.tmp.yaml || exit 3
           "@;
 
           $result = az aks command invoke `
               -g $env:AZURE_GROUP_KUBERNETES `
               -n $env:KUBERNETES_CLUSTER `
               --file .kubernetes/certmanager-values.tmp.yaml `
-              --file .kubernetes/certmanager-cluster-issuer.tmp.yaml `
-              --file .kubernetes/certmanager-service-monitor.tmp.yaml `
               --command $command `
               --output json | ConvertFrom-Json;
 
@@ -73,6 +64,56 @@ jobs:
           if ($result.exitCode -ne 0)
           {
               throw "Deploy Cert-Manager Failed"
+          }
+
+      - name: Deploy Cluster Issuer (Dynamic)
+        shell: pwsh
+        run: |
+          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json;
+
+          $solvers = foreach ($zone in $zones) {
+              $clientId = az identity list -g $env:AZURE_GROUP_DNS --query "[?contains(name, '$($zone.name)')].clientId | [0]" -o tsv;
+
+              @{
+                  selector = @{
+                    dnsZones = @($zone.name)
+                  }
+                  dns01 = @{
+                    azureDNS = @{
+                      subscriptionID    = $env:AZURE_SUBSCRIPTION_ID
+                      resourceGroupName = $env:AZURE_GROUP_DNS
+                      hostedZoneName    = $zone.name
+                      environment       = AzurePublicCloud
+                      managedIdentity   = @{
+                        clientID = $env:DNS_ZONE_CLIENT_ID
+                      }
+                    }
+                  }
+              }
+          };
+
+          $env:CLUSTER_ISSUER_SOLVERS = $solvers | ConvertTo-Json -Depth 20 -Compress;
+
+          Get-Content .kubernetes/certmanager-cluster-issuer.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/certmanager-cluster-issuer.tmp.yaml;
+
+          $command = @"
+              set -eu
+
+              kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 1
+          "@;
+
+          $result = az aks command invoke `
+              -g $env:AZURE_GROUP_KUBERNETES `
+              -n $env:KUBERNETES_CLUSTER `
+              --file .kubernetes/certmanager-cluster-issuer.tmp.yaml `
+              --command $command `
+              --output json | ConvertFrom-Json;
+
+          echo $result;
+
+          if ($result.exitCode -ne 0)
+          {
+              throw "Deploy Cluster Issuer Failed"
           }
 
       - name: Create DNS Zone Credentials

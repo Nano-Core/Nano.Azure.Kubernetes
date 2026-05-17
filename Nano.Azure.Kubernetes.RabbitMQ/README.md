@@ -64,6 +64,8 @@ The security context is hardened for production use. Privilege escalation is dis
 The RabbitMQ cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
 ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
 
+> ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
+
 ### Health Probes
 The deployment configures startup, readiness, and liveness probes. These are intentionally set with conservative thresholds to allow sufficient time for cluster stabilization and quorum 
 leader re-election during startup or failover scenarios.

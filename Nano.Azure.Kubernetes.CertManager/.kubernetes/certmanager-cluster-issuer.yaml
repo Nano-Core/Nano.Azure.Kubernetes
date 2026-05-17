@@ -9,12 +9,4 @@ spec:
     server: "https://acme-v02.api.letsencrypt.org/directory"
     privateKeySecretRef:
       name: letsencrypt-prod-private-key
-    solvers:
-      - dns01:
-          azureDNS:
-            subscriptionID: %AZURE_SUBSCRIPTION_ID%
-            resourceGroupName: %AZURE_GROUP_DNS%
-            hostedZoneName: %DNS_ZONE_NAME%
-            environment: AzurePublicCloud
-            managedIdentity:
-              clientID: %DNS_ZONE_CLIENT_ID%
+    solvers: %CLUSTER_ISSUER_SOLVERS%

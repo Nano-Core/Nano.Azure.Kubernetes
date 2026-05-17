@@ -58,6 +58,8 @@ monitor resource consumption across replicas. This ensures ClamAV operates as a 
 ClamAV uses a `ServiceMonitor` because its metrics are exposed through a stable Service endpoint, allowing Prometheus to reliably scrape them without depending on individual Pod lifecycles 
 or IP changes.  
 
+> ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
+
 ### Health Probes
 The ClamAV Helm chart includes default startup, readiness, and liveness probes to ensure the scanner is correctly initialized and remains operational. These probes help Kubernetes manage 
 pod lifecycle events, automatically restarting unhealthy instances and preventing traffic from being routed to unready pods.  
