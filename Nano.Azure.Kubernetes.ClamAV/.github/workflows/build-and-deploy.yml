@@ -72,7 +72,7 @@ jobs:
 
           if ($result.exitCode -ne 0)
           {
-              throw "Deploy failed"
+              throw "error";
           }
 
       - name: GitHub Release

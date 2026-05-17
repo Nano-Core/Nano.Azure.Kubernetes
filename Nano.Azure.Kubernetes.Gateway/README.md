@@ -23,6 +23,9 @@ splitting, and multi-protocol workloads.
 > 📖 Learn more about **[Create Application Gateway for Containers managed by ALB Controller](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/quickstart-create-application-gateway-for-containers-managed-by-alb-controller)**.  
 
 
+THIS USES PREVIEW az CLI
+
+
 ## Registration
 This deployment provisions API Gateway in AKS.  
 

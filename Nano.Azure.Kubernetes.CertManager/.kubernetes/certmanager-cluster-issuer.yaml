@@ -9,4 +9,5 @@ spec:
     server: "https://acme-v02.api.letsencrypt.org/directory"
     privateKeySecretRef:
       name: letsencrypt-prod-private-key
-    solvers: %CLUSTER_ISSUER_SOLVERS%
+    solvers: 
+%CLUSTER_ISSUER_SOLVERS%

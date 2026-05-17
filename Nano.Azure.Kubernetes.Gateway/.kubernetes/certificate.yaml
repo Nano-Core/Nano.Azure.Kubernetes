@@ -13,6 +13,7 @@ spec:
   subject:
     organizations:
     - %CERTIFICATE_ORGANIZATION%
-  dnsNames: %CERTIFICATE_DNS_NAMES%
+  dnsNames: 
+%CERTIFICATE_DNS_NAMES%
   privateKey:
     rotationPolicy: Always  
