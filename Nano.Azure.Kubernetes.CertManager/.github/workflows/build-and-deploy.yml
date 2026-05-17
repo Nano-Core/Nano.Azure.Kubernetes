@@ -43,19 +43,19 @@ jobs:
         shell: pwsh
         run: |
           $clientId = az identity list -g $env:AZURE_GROUP_DNS --query [0].clientId -o tsv;
-          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query name;
+          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json;
 
           $env:CLUSTER_ISSUER_SOLVERS = @(
-              foreach ($zoneName in $zoneNames) {
+              foreach ($zone in $zones) {
           @"
                 - selector:
                     dnsZones:
-                      - $($zoneName)
+                      - $($zone.name)
                   dns01:
                     azureDNS:
                       subscriptionID: $($env:AZURE_SUBSCRIPTION_ID)
                       resourceGroupName: $($env:AZURE_GROUP_DNS)
-                      hostedZoneName: $($zoneName)
+                      hostedZoneName: $($zone.name)
                       environment: AzurePublicCloud
                       managedIdentity:
                         clientID: $clientId
