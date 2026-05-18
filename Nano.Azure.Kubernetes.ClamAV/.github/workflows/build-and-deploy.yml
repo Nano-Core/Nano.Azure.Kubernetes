@@ -16,11 +16,11 @@ env:
   KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
   KUBERNETES_REPLICA_MIN_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
   KUBERNETES_REPLICA_MAX_COUNT: ${{ github.ref == 'refs/heads/master' && 6 || 3 }}  
-  KUBERNETES_MEMORY_REQUEST: 512Mi
-  KUBERNETES_MEMORY_LIMIT: 1536Mi
+  KUBERNETES_MEMORY_REQUEST: 1024Mi
+  KUBERNETES_MEMORY_LIMIT: 3072Mi
   KUBERNETES_MEMORY_UTILIZATION: 180
-  KUBERNETES_CPU_REQUEST: 150m
-  KUBERNETES_CPU_LIMIT: 450m
+  KUBERNETES_CPU_REQUEST: 200m
+  KUBERNETES_CPU_LIMIT: 600m
   KUBERNETES_CPU_UTILIZATION: 180
 jobs:
   build-and-deploy:
@@ -54,10 +54,8 @@ jobs:
               helm repo update || exit 2
 
               helm upgrade $env:APP_NAME wiremind/clamav --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f clamav-values.tmp.yaml || exit 3
-
+    
               kubectl apply -f clamav-service-monitor.tmp.yaml || exit 4
-
-              kubectl rollout restart statefulset/$env:APP_NAME -n apps || exit 5
           "@;
 
           $result = az aks command invoke `
@@ -68,7 +66,7 @@ jobs:
               --command $command `
               --output json | ConvertFrom-Json;
 
-          echo $result
+          echo $result;
 
           if ($result.exitCode -ne 0)
           {

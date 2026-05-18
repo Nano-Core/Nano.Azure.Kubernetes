@@ -34,10 +34,8 @@ spec:
     statefulSet:
       spec:
         template:
-          metadata:
-            annotations:
-              checksum: %CHECKSUM%
           spec:
+            terminationGracePeriodSeconds: 10800
             nodeSelector:
               kubernetes.io/os: linux
               nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%

@@ -26,6 +26,16 @@ tolerance, and ability to handle large volumes of messages efficiently.
 ## Registration
 This deployment provisions a RabbitMQ cluster in Kubernetes.  
 
+
+
+kubectl scale statefulsets $env:APP_NAME-server --replicas=$env:KUBERNETES_REPLICA_COUNT -n $env:KUBERNETES_NAMESPACE
+
+> ⚠️ Scaling down a RabbitMQ cluster can be disruptive due to quorum replicas and active cluster state. Ensure the cluster is healthy and synchronized before reducing replicas.  
+
+
+
+
+
 Before running the GitHub Action, add the following GitHub organization secrets.  
 
 | Secret                                     | Type    | Description                                                |

@@ -12,6 +12,7 @@
   * **[API Gateway](#api-gateway)**  
   * **[Azure Application Load-Balancer](#azure-application-load-balancer)**  
   * **[SSL Certificate](#ssl-certificate)**  
+  * **[DNS Records](#dns-records)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -60,6 +61,12 @@ This resource defines a TLS certificate managed by cert-manager and issued via L
 renewal before expiration to ensure continuous HTTPS availability. The resulting certificate is stored as a Kubernetes secret and used by the Gateway for TLS termination.
 
 The certificate is a wildcard certificate that covers all domains across the DNS zones managed in Nano.  
+
+### DNS Records
+The DNS configuration ensures that each Azure DNS zone automatically resolves the wildcard domain (`*.<zone>`) to the Azure Application Load Balancer frontend endpoint. This provides a 
+consistent public entry point for all applications without requiring manual DNS management per service.  
+
+The setup is idempotent, meaning records are created only when missing and safely reused otherwise.
 
 ## Dependencies
 Gateway has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

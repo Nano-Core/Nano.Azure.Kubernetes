@@ -18,8 +18,8 @@ env:
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: apps
   KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_MEMORY_REQUEST: 128Mi
-  KUBERNETES_MEMORY_LIMIT: 384Mi 
+  KUBERNETES_MEMORY_REQUEST: 384Mi
+  KUBERNETES_MEMORY_LIMIT: 1152Mi 
   KUBERNETES_CPU_REQUEST: 100m
   KUBERNETES_CPU_LIMIT: 300m
   RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ADMIN_USERNAME || vars.STAGING_RABBITMQ_ADMIN_USERNAME }}
@@ -47,8 +47,6 @@ jobs:
       - name: Deploy RabbitMQ
         shell: pwsh
         run: |
-          $env:CHECKSUM = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes((Get-Content .kubernetes/rabbitmq-cluster.yaml -Raw)))) -Algorithm SHA256).Hash
-
           Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
           Get-Content .kubernetes/rabbitmq-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-auth-secret.tmp.yaml;
           Get-Content .kubernetes/rabbitmq-load-definition-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
@@ -72,7 +70,7 @@ jobs:
                   kubectl apply -f rabbitmq-service-monitor.tmp.yaml || exit 5
           "@ --output json | ConvertFrom-Json;
 
-          echo $result
+          echo $result;
 
           if ($result.exitCode -ne 0)
           {
