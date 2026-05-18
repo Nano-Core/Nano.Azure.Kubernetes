@@ -26,15 +26,14 @@ tolerance, and ability to handle large volumes of messages efficiently.
 ## Registration
 This deployment provisions a RabbitMQ cluster in Kubernetes.  
 
+RabbitMQ does not automatically scale down when the replica count is reduced. This is intentional, as removing nodes from a RabbitMQ cluster can disrupt quorum replicas and active cluster state. 
+Before scaling down, ensure the cluster is healthy and fully synchronized.
 
+To manually scale down the RabbitMQ cluster after reducing the replica count, execute the following command.
 
+```powershell
 kubectl scale statefulsets $env:APP_NAME-server --replicas=$env:KUBERNETES_REPLICA_COUNT -n $env:KUBERNETES_NAMESPACE
-
-> ⚠️ Scaling down a RabbitMQ cluster can be disruptive due to quorum replicas and active cluster state. Ensure the cluster is healthy and synchronized before reducing replicas.  
-
-
-
-
+```
 
 Before running the GitHub Action, add the following GitHub organization secrets.  
 
