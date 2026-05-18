@@ -40,13 +40,13 @@ jobs:
           $env:VNET_NAME = az network vnet list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --query [0].name -o tsv;
           $env:ALB_SUBNET_ID = az network vnet subnet show -n aks-subnet-alb -g $env:AZURE_GROUP_KUBERNETES_ASSETS --vnet-name $env:VNET_NAME --query id -o tsv;
 
-          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query name;
-          
+          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json;
+ 
           $env:CERTIFICATE_DNS_NAMES = @(
-              foreach ($zoneName in $zoneNames) {
+              foreach ($zone in $zones) {
           @"
-              - $($zoneName),
-                *.$($zoneName)
+              - $($zone.name),
+                *.$($zone.name)
           "@
               }
           ) -join "`n";
@@ -87,21 +87,35 @@ jobs:
           $env:ALB_NAME = az network alb list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --query [0].name -o tsv;
           $env:ALB_FQDN = az network alb frontend list -g $env:AZURE_GROUP_KUBERNETES_ASSETS --alb-name $env:ALB_NAME --query [0].fqdn -o tsv;
 
-          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query [].name;
+          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json;
 
-          foreach ($zoneName in $zoneNames) 
+          foreach ($zone in $zones) 
           {
-              az network dns record-set cname set-record `
+              $recordExists = (az network dns record-set cname list `
                   -g $env:AZURE_GROUP_DNS `
-                  -z $zoneName `
-                  --record-set-name * `
-                  --cname $env:ALB_FQDN `
-                  --ttl 3600 `
-                  --if-none-match;
+                  -z $zone.name `
+                  --query "[?name=='*'] | length(@)" `
+                  -o tsv `
+                  --only-show-errors) -gt 0;
+
+              if (-not $recordExists)
+              {
+                  az network dns record-set cname create `
+                      -g $env:AZURE_GROUP_DNS `
+                      -z $zone.name `
+                      -n "*" `
+                      --ttl 3600;
+
+                  az network dns record-set cname set-record `
+                      -g $env:AZURE_GROUP_DNS `
+                      -z $zone.name `
+                      -n "*" `
+                      -c $env:ALB_FQDN;
+              }
           }
 
-          if ($result.exitCode -ne 0)
-          {
+          if ($LastExitCode -ne 0)
+          { 
               throw "error";
           }
  
