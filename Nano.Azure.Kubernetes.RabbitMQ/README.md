@@ -55,6 +55,14 @@ To retrieve the deployed RabbitMQ cluster from the Custom Resource Definition (C
 kubectl get rabbitmqclusters -n {{namespace}};
 ```
 
+To see the available configuration options for the deployment, use the following commands.  
+
+```powershell
+kubectl explain rabbitmqcluster;
+
+kubectl explain rabbitmqcluster.{{group}};
+```
+
 ### High Availability
 The RabbitMQ deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
 and resilience by reducing the risk of multiple RabbitMQ pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 

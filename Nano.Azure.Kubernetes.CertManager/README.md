@@ -67,7 +67,7 @@ still allowing scheduling flexibility when resources are constrained.
 ### Hardened Security
 The Cert-Manager Helm chart is already hardened for production use by default, providing a secure baseline configuration out of the box. However, the `certmanager-values.yaml` file 
 explicitly defines the chart’s default values to ensure that future changes or relaxations in the upstream chart configuration result in visible deployment or validation failures, rather 
-'than silently introducing less secure container settings.
+than silently introducing less secure container settings.
 
 No additional overrides are required, as the container runs with restricted privileges and a minimized attack surface. This ensures a secure-by-default deployment suitable for production 
 workloads.  

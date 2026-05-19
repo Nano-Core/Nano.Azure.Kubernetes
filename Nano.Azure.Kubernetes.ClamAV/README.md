@@ -71,6 +71,12 @@ The ClamAV deployment supports Horizontal Pod Autoscaling to dynamically adjust 
 increased workload demand and scale in when usage is low, maintaining efficiency and responsiveness. The autoscaling behavior helps stabilize performance while optimizing cluster 
 resource usage.
 
+To inspect the currently allocated resources or review the HPA configuration, use the following command.  
+
+```powershell
+kubectl dscribe hpa $env:APP_NAME -n $env:KUBERNETES_NAMESPACE;
+```
+
 ## Dependencies
 ClamAV has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
