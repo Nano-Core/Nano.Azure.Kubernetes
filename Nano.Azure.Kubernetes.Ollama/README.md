@@ -1,28 +1,81 @@
 # Nano.Azure.Kubernetes.Ollama
-_Ollama allows the users to run open-source large language models, such as Llama 2, locally. Ollama bundles model weights, configuration, and data into a single package, defined by a Modelfile._  
+
+> Ollama deployment for Nano AI model hosting._
 
 ***
 
-### Deployment
+## Table of Contents
+* **[Summary](#summary)**  
+* **[Registration](#registration)**  
+  * **[High Availability](#topology-affinity)**  
+  * **[Hardened Security](#hardened-security)**  
+  * **[Prometheus Monitoring](#prometheus-monitoring)**  
+  * **[Health Probes](#health-probes)**  
+  * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[GPU Nodepool](#gpu-nodepool)**  
+* **[Dependencies](#dependencies)**  
 
-#### Commands
-* ```kubectl port-forward ollama-xxxxxxxxx-xxxx 11434 --namespace ollama```
- 
-*** 
+## Summary
+Ollama allows the users to run open-source large language models, such as Llama 2, locally. Ollama bundles model weights, configuration, and data into a single package, defined by a Modelfile.
 
-### Dependencies
-* [Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes)
+> 📖 Learn more about **[Ollama](https://ollama.com)**.
+> 📖 Learn more about **[Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md)**.
+> 📖 Learn more about **[Ollama Library](https://ollama.com/library)**.
 
-*** 
+## Registration
+This deployment provisions Ollama in Kubernetes.  
 
-### References
-* https://github.com/ollama/ollama
-* https://github.com/ollama/ollama/blob/main/docs/api.md
-* https://artifacthub.io/packages/helm/ollama-helm/ollama
-* https://ollama.com/library
+The deployment uses the [Ollama Helm Chart](https://artifacthub.io/packages/helm/ollama-helm/ollama) to provision and manage the underlying infrastructure required for Ollama.  
 
-GPU:
-* https://learn.microsoft.com/en-us/azure/aks/gpu-cluster
-* https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html
+To access Ollama locally, use port-forwarding to expose the pod by running the following command.
 
-***
+```powershell
+kubectl port-forward $env:APP_NAME 11434 -n $env:KUBERNETES_NAMESPACE;
+```
+
+### High Availability
+The Ollama deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
+and resilience by reducing the risk of multiple Ollama pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
+pods across the cluster whenever possible.  
+
+### Hardened Security
+The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
+capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
+
+The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
+reduce exposure to kernel-level risks.  
+
+### Prometheus Monitoring
+Ollama is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
+ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
+
+> ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
+
+### Health Probes
+The deployment configures startup, readiness, and liveness probes. These are intentionally set with conservative thresholds to allow sufficient time for cluster stabilization and quorum 
+leader re-election during startup or failover scenarios.
+
+### Horizontal Pod Autoscaler
+Horizontal Pod Autoscaling (HPA) is not enabled for Ollama deployments by default.
+
+Ollama workloads are typically constrained by memory and GPU resources rather than CPU utilization. Because each replica must load one or more large language models into memory, reactive 
+scaling based on CPU or memory metrics can lead to inefficient resource usage and frequent model loading overhead.
+
+Instead of automatic scaling, capacity is managed explicitly by controlling the number of replicas. This ensures predictable performance, avoids unnecessary model reloads, and provides stable 
+latency characteristics for inference workloads.  
+
+### GPU Nodepool
+This deployment requires a pre-provisioned GPU node pool in the Kubernetes cluster, as workloads are intended to run on GPU-enabled nodes for hardware-accelerated inference.
+
+The nodepool must be created in advance, as described in the guide for [setting up a GPU cluster in AKS](https://learn.microsoft.com/en-us/azure/aks/gpu-cluster), to ensure GPU-capable nodes 
+are available for scheduling workloads. GPU support must be enabled using the NVIDIA GPU Operator, which installs and manages drivers, device plugins, and runtime components required for 
+Kubernetes to schedule and run GPU workloads, as described in the [NVIDIA GPU Operator getting started guide](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html).
+
+Without this prerequisite, GPU workloads in this deployment will not be scheduled successfully.  
+
+## Dependencies
+Ollama has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
+
+| Dependency                                                                                                                            | Description                          | 
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).  |

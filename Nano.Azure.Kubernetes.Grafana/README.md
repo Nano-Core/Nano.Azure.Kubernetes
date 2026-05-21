@@ -42,7 +42,7 @@ Before running the GitHub Action, add the following GitHub organization secrets.
 To access Grafana locally, use port-forwarding to expose it by running the following command.
 
 ```powershell
-kubectl port-forward $env:APP_NAME-leader-0 3000 -n $env:KUBERNETES_NAMESPACE;
+kubectl port-forward $env:APP_NAME 3000 -n $env:KUBERNETES_NAMESPACE;
 ```
 
 Normally, this should not be necessary, as Grafana is already exposed externally.  
