@@ -1,0 +1,146 @@
+name: Build and Deploy
+on:
+  pull_request:
+    branches:
+      - master 
+  push:
+    branches:
+      - master 
+env:
+  APP_NAME: grafana
+  VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
+  CHART_VERSION: 12.3.3
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
+  AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
+  KUBERNETES_NODEPOOL_COMPUTE: cpu
+  KUBERNETES_NAMESPACE: default
+  KUBERNETES_REPLICA_COUNT: 1
+  KUBERNETES_MEMORY_REQUEST: 384Mi
+  KUBERNETES_MEMORY_LIMIT: 1152Mi 
+  KUBERNETES_CPU_REQUEST: 150m
+  KUBERNETES_CPU_LIMIT: 450m
+  GRAFANA_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_GRAFANA_ADMIN_USERNAME || secrets.STAGING_GRAFANA_ADMIN_USERNAME }}
+  GRAFANA_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_GRAFANA_ADMIN_PASSWORD || secrets.STAGING_GRAFANA_ADMIN_PASSWORD }}
+  SQL_TYPE: mysql
+  SQL_HOST: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_HOST || secrets.STAGING_DATA_HOST }}
+  SQL_PORT: ${{ secrets.DATA_PORT }} 
+  SQL_NAME: grafana
+  SQL_USER: grafana-user
+  SQL_ADMIN_USER: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_ADMIN_USER || secrets.STAGING_DATA_ADMIN_USER }}
+  SQL_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_ADMIN_PASSWORD || secrets.STAGING_DATA_ADMIN_PASSWORD }}
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: ${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure Login
+        shell: pwsh
+        run: |
+          az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
+          az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+          az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
+
+      - name: Initialize MySQL Database
+        if: env.SQL_TYPE == 'mysql'
+        shell: pwsh
+        run: |
+          $env:MYSQL_ADMIN_CONNECTIONSTRING = "Server=$env:SQL_HOST;Port=$env:SQL_PORT;Database=mysql;Uid=$env:SQL_ADMIN_USER;Pwd=$env:SQL_ADMIN_PASSWORD;SslMode=Preferred";
+
+          apt-get update;
+          apt-get install -y mysql-client;
+
+          mysql -e "CREATE DATABASE IF NOT EXISTS grafana" $env:MYSQL_ADMIN_CONNECTIONSTRING;
+
+          $userExists = mysql --batch -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$env:SQL_USER');" $env:MYSQL_ADMIN_CONNECTIONSTRING;
+          if ($userExists -eq 0) 
+          {
+              mysql -e " `
+                  CREATE USER '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; `
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON $database.* TO '$env:SQL_USER'@'%'; `
+                  FLUSH PRIVILEGES;" `
+                  $env:MYSQL_ADMIN_CONNECTIONSTRING;
+          }
+
+          $env:SQL_CA_CERT = Get-Content .sql/MySql/.certificates/DigiCertGlobalRootCA.pem -Raw;
+
+      - name: Initialize PostgreSQL Database
+        if: env.SQL_TYPE == 'postgresql'
+        shell: pwsh
+        run: |
+
+      - name: Initialize SQL Server Database
+        if: env.SQL_TYPE == 'sqlserver'
+        shell: pwsh
+        run: |
+
+      - name: Deploy Grafana
+        shell: pwsh
+        run: |
+          Get-Content .kubernetes/grafana-db-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-db-auth-secret.tmp.yaml;
+          Get-Content .kubernetes/grafana-db-ca-cert-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-db-ca-cert-secret.tmp.yaml;
+          Get-Content .kubernetes/grafana-admin-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-admin-auth-secret.tmp.yaml;
+          Get-Content .kubernetes/grafana-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-values.tmp.yaml;
+          Get-Content .kubernetes/grafana-httproute.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-httproute.tmp.yaml;
+          Get-Content .kubernetes/grafana-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-service-monitor.tmp.yaml;
+
+          $result = az aks command invoke `
+              -g $env:AZURE_GROUP_KUBERNETES `
+              -n $env:KUBERNETES_CLUSTER `
+              --file .kubernetes/grafana-db-auth-secret.tmp.yaml `
+              --file .kubernetes/grafana-db-ca-cert-secret.tmp.yaml `
+              --file .kubernetes/grafana-admin-auth-secret.tmp.yaml `
+              --file .kubernetes/grafana-values.tmp.yaml `
+              --file .kubernetes/grafana-httproute.tmp.yaml `
+              --file .kubernetes/grafana-service-monitor.tmp.yaml `
+              --command @"
+                  set -eu
+
+                  kubectl apply -f grafana-db-auth-secret.tmp.yaml || exit 1
+                  kubectl apply -f grafana-db-ca-cert-secret.tmp.yaml || exit 2
+                  kubectl apply -f grafana-admin-auth-secret.tmp.yaml || exit 3
+
+                  helm upgrade --install $env:APP_NAME oci://ghcr.io/grafana-community/helm-charts/grafana --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f grafana-values.tmp.yaml || exit 4
+
+                  kubectl apply -f grafana-httproute.tmp.yaml || exit 5
+                  kubectl apply -f grafana-service-monitor.tmp.yaml || exit 6
+          "@ --output json | ConvertFrom-Json;
+
+          echo $result;
+
+          if ($result.exitCode -ne 0)
+          {
+              throw "error";
+          }
+
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.VERSION }}
+          name: "Release ${{ env.VERSION }}"
+          body: |
+            Version: ${{ env.VERSION }}
+            Commit: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
+
+      - name: Slack Notification
+        if: always()
+        uses: act10ns/slack@v2
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          config: .github/config/slack.yml
+          status: ${{ job.status }}
+          channel: ${{ vars.SLACK_CHANNEL }}

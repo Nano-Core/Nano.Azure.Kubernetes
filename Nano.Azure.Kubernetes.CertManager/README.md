@@ -65,12 +65,11 @@ resilience and reduces the risk of multiple instances being impacted by a single
 still allowing scheduling flexibility when resources are constrained.  
 
 ### Hardened Security
-The Cert-Manager Helm chart is already hardened for production use by default, providing a secure baseline configuration out of the box. However, the `certmanager-values.yaml` file 
-explicitly defines the chart’s default values to ensure that future changes or relaxations in the upstream chart configuration result in visible deployment or validation failures, rather 
-than silently introducing less secure container settings.
+The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
+capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
 
-No additional overrides are required, as the container runs with restricted privileges and a minimized attack surface. This ensures a secure-by-default deployment suitable for production 
-workloads.  
+The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
+reduce exposure to kernel-level risks.  
 
 ### Prometheus Monitoring
 Monitoring is enabled for Prometheus and exposes a `/metrics` endpoint for scraping Cert-Manager runtime and scanning statistics. This allows integration with Kubernetes-native observability 

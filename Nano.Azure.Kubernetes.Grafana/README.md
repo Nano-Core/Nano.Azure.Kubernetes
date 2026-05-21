@@ -1,6 +1,6 @@
-# Nano.Azure.Kubernetes.Redis
+# Nano.Azure.Kubernetes.Grafana
 
-> _Redis cluster for Nano applications providing and fast no-sql storage._
+> _Grafana deployment for Nano applications, used for visualizing custom application business statistics._
 
 ***
 
@@ -12,58 +12,25 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Grafana Sidecars](#grafana-sidecars)**  
+  * **[SMTP Configuration](#smtp-configuration)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
-Redis is an in-memory data structure store, widely used as a distributed, scalable key-value database. It supports various data types like strings, hashes, lists, sets, and more, making it 
-versatile for different use cases. Redis excels in performance due to its in-memory nature, making it ideal for caching, real-time analytics, session management, and message brokering. It also 
-offers features like persistence, replication, and high availability through Redis Sentinel and Redis Cluster. With its simple and flexible design, Redis is a popular choice for building 
-high-performance, scalable applications.  
+Grafana is an open-source observability and analytics platform used to visualize, monitor, and analyze metrics, logs, and traces from multiple data sources. It provides customizable dashboards, 
+real-time monitoring, and alerting, helping teams gain insight into infrastructure, applications, and system performance. With broad integrations and a flexible plugin ecosystem, Grafana is 
+widely used for monitoring and troubleshooting modern, scalable environments.  
 
-> 📖 Learn more about **[Redis Cluster Operator](https://redis.io/tutorials/operate/orchestration/kubernetes-operator/)**.
+> 📖 Learn more about **[Grafana](https://grafana.com/docs)**.
 
-
-
-
-The Grafana sidecars automatically discover and load Grafana configuration from Kubernetes ConfigMaps and Secrets without restarting Grafana.
-
-| Sidecar | Purpose |
-|---|---|
-| `dashboards` | Automatically imports dashboards from ConfigMaps |
-| `datasources` | Automatically imports datasources from ConfigMaps/Secrets |
-
-With `searchNamespace: ALL`, Grafana watches the entire cluster for matching resources. This enables "dashboards/datasources as code" and is commonly used in GitOps Kubernetes se
-
-
-
-THIS IS NOT GOOD BUT MAYBE WE NEED AND OVERVIEW OF VOLUMES / SECRETS ???
-Grafana stores its persistent state primarily in `/var/lib/grafana`, which is typically backed by a PVC in Kubernetes. This includes plugins, cache, and optional embedded database data if no external database is used. Configuration and provisioning are mounted separately and are not persisted. Temporary runtime data is stored in `/tmp` and `/var/tmp` using ephemeral volumes.
-
-| Path | Type | Purpose | Persistence |
-|------|------|---------|-------------|
-| `/var/lib/grafana` | PVC | Plugins, cache, state | Persistent |
-| `/etc/grafana/grafana.ini` | ConfigMap | Main configuration | Non-persistent |
-| `/etc/grafana/provisioning` | ConfigMap | Dashboards/datasources | Non-persistent |
-| `/tmp`, `/var/tmp` | emptyDir | Runtime temp files | Ephemeral |
-
-
-
-
-
-
+Grafana integrates also well with Nano applications that expose data providers, enabling fast and flexible visualization of dashboards and operational statistics. With Nano Grafana, integrating 
+observability into applications becomes simple and efficient, making it easy to build rich monitoring and analytics experiences with minimal setup.  
 
 ## Registration
-This deployment provisions a Redis cluster in Kubernetes.  
+This deployment provisions Grafana in Kubernetes.  
 
-The deployment uses the [Redis Cluster Operator Helm Chart](https://artifacthub.io/packages/helm/ot-container-kit/redis-operator) to provision and manage the underlying infrastructure required 
-for a Redis cluster. This operator is responsible for creating, configuring, and maintaining all Redis cluster components, ensuring a consistent and automated deployment model.
-
-As part of the deployment configuration, explicit versioning is required for both the Redis container image and the Redis exporter image to ensure reproducibility and compatibility across 
-environments. Available Redis image versions can be reviewed in the [Redis Image Releases](https://quay.io/repository/opstree/redis?tab=tags), while corresponding exporter versions are listed 
-in the [Redis Exporter Images](https://quay.io/repository/opstree/redis-exporter?tab=tags).
-
-https://artifacthub.io/packages/helm/grafana-community/grafana
-
+The deployment uses the [Grafana Community Helm Chart](https://artifacthub.io/packages/helm/grafana-community/grafana) to provision and manage the underlying infrastructure required 
+for Grafana.  
 
 Before running the GitHub Action, add the following GitHub organization secrets.  
 
@@ -72,69 +39,79 @@ Before running the GitHub Action, add the following GitHub organization secrets.
 | `{{environment}}_GRAFANA_ADMIN_USERNAME`  | secrets | The admin password for Grafana.   |
 | `{{environment}}_GRAFANA_ADMIN_PASSWORD`  | secrets | The admin password for Grafana.   |
 
-To access the Redis cluster locally, use port-forwarding to expose the management UI by running the following command.
+To access Grafana locally, use port-forwarding to expose it by running the following command.
 
 ```powershell
-kubectl port-forward $env:APP_NAME-leader-0 6379 -n $env:KUBERNETES_NAMESPACE;
+kubectl port-forward $env:APP_NAME-leader-0 3000 -n $env:KUBERNETES_NAMESPACE;
 ```
 
-To retrieve the deployed Redis cluster from the Custom Resource Definition (CRD), run.  
-
-```powershell
-kubectl get rabbitmqclusters -n {{namespace}};
-```
-
-To see the available configuration options for the deployment, use the following commands.  
-
-```powershell
-kubectl explain rediscluster;
-
-kubectl explain rediscluster.{{group}};
-```
+Normally, this should not be necessary, as Grafana is already exposed externally.  
 
 ### High Availability
-The Redis deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
+The Grafana deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
 and resilience by reducing the risk of multiple Redis pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
 pods across the cluster whenever possible.  
 
 ### Hardened Security
-The security context is hardened for production use. Privilege escalation is disabled, and all Linux capabilities are dropped to minimize the container’s attack surface.
+The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
+capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
+
+The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
+reduce exposure to kernel-level risks.  
+
+Grafana stores its persistent state primarily in `/var/lib/grafana`, which is backed by a PVC in Kubernetes. This includes plugins, cache, and optional embedded database data if no external 
+database is used. Configuration and provisioning are mounted separately and are not persisted. Temporary runtime data is stored in `/tmp` and `/var/tmp` using ephemeral volumes.
 
 ### Prometheus Monitoring
-The Redis cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
-ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
+The Grafana deployemnt is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints 
+that ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
 
 > ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
 
 ### Health Probes
-The deployment configures readiness, and liveness probes for both leaders and followers.  
+The deployment configures both a readiness and liveness probe.  
 
 ### Horizontal Pod Autoscaler
-- HPA disabled because it doesn't make much sense for Grafana. It can be enabled defining 
+Horizontal Pod Autoscaling (HPA) is disabled by default, as it does not provide significant value for Grafana workloads. Grafana is primarily stateless, and scaling is typically handled more 
+predictably through replica adjustments rather than reactive autoscaling based on CPU or memory metrics.
+
+Scaling is therefore performed explicitly by updating the replica configuration, allowing for controlled and predictable capacity changes without relying on automatic scaling decisions.
+
+Autoscaling can be enabled by adding the following section to `grafana-values.yaml`.  
+
+```yaml
 autoscaling:
   enabled: true
   minReplicas: 1
   maxReplicas: 5
-  targetCPU: "60"
-  targetMemory: ""
-  behavior: {}
+  targetCPU: 180
+  targetMemory: 180
+```
 
+### Grafana Sidecars
+The Grafana sidecars automatically discover and load configuration from Kubernetes ConfigMaps and Secrets without requiring a Grafana restart.
 
+| Sidecar       | Purpose                                                       |
+| ------------- | ------------------------------------------------------------- |
+| dashboards    | Automatically imports dashboards from ConfigMaps.             |
+| datasources   | Automatically imports datasources from ConfigMaps/Secrets.    |
 
-Redis Cluster scaling is stateful and slot-based, meaning it cannot safely rely on Kubernetes HPA mechanisms. Adding or removing nodes requires resharding, where data must be redistributed 
-across the cluster to maintain consistency and availability. As a result, simple CPU or memory autoscaling would not guarantee correct data placement and could lead to an unbalanced or 
-unstable cluster.
+With `searchNamespace: ALL`, Grafana can watch the entire cluster for matching resources. This enables a “dashboards and datasources as code” approach, which is commonly used in GitOps-based 
+Kubernetes environments.
 
-For this reason, the Redis Operator does not support Kubernetes HPA for `RedisCluster`.  
+> ⚠️ Dashboards and datasources are not included by default and must be created via ConfigMaps or Secrets. Sidecars only handle discovery and syncing, not provisioning.  
 
-Instead, scaling is performed explicitly by updating the `clusterSize` field in the `RedisCluster` specification. The operator then handles the full lifecycle of the change, including 
-provisioning new pods, joining them to the cluster, and redistributing hash slots to ensure even data distribution and cluster health.  
+### SMTP Configuration
+Grafana is configured with SMTP integration for sending emails such as password resets, alert notifications, and other system-generated messages. SMTP settings are provided via a Kubernetes 
+Secret, which stores the mail server credentials and configuration securely.  
+
+This allows Grafana to send emails for features such as account recovery and alerting workflows without exposing sensitive information in configuration files or environment variables.  
 
 ## Dependencies
-Redis has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
+Grafana has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                            | Description                          | 
-| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).  |
-MySQL
-SendGrid
+| Dependency                                                                                                                                        | Description                          | 
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**              | The Azure Kubernetes Service (AKS).  |
+| **[Nano.Azure.MySql](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazuremysql)**                             | The MySQL server.                    |
+| **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetessendgrid)**  | The SendGrid secret deployment.      |

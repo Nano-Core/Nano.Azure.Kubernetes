@@ -41,16 +41,11 @@ spec:
               nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
             securityContext:
               runAsNonRoot: true
-              runAsUser: 999
-              runAsGroup: 999
-              fsGroup: 999
               seccompProfile:
                 type: RuntimeDefault
             containers:
               - name: rabbitmq
                 securityContext:
-                  runAsUser: 999
-                  runAsGroup: 999
                   privileged: false
                   allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true

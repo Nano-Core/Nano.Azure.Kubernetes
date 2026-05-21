@@ -75,7 +75,11 @@ Quorum queues are enabled for the cluster. This improves resiliency, consistency
 re-elections may occur during node restarts, which can temporarily impact availability.
 
 ### Hardened Security
-The security context is hardened for production use. Privilege escalation is disabled, and all Linux capabilities are dropped to minimize the container’s attack surface.
+The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
+capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
+
+The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
+reduce exposure to kernel-level risks.  
 
 ### Prometheus Monitoring
 The RabbitMQ cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
