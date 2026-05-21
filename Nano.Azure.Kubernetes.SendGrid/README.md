@@ -11,11 +11,11 @@
 
 ## Summary
 A Kubernetes secret storing a SendGrid API key securely holds the API key within the cluster, allowing applications running in Kubernetes pods to send emails via SendGrid without exposing 
-the key in code or environment variables. This approach ensures that the API key remains protected while enabling seamless email integration.  
+the key in code or environment variables. This approach ensures that the API key remains protected.  
 
 > 📖 Learn more about **[SendGrid](https://sendgrid.com)**.
 
-Any SMTP compatible email provider may be used; SendGrid is only provided as an example. The primary purpose of this deployment is to create the `smtp-auth` Kubernetes secret, which can then 
+Any SMTP compatible email provider may be used; SendGrid is only provided as an example. The primary purpose of this deployment is to create the `sendgrid-auth` Kubernetes secret, which can then 
 be reused by other Nano components and applications by referencing the same secret.  
 
 ## Registration
