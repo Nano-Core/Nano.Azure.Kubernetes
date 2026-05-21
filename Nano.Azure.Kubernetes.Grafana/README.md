@@ -1,0 +1,140 @@
+# Nano.Azure.Kubernetes.Redis
+
+> _Redis cluster for Nano applications providing and fast no-sql storage._
+
+***
+
+## Table of Contents
+* **[Summary](#summary)**  
+* **[Registration](#registration)**  
+  * **[High Availability](#topology-affinity)**  
+  * **[Hardened Security](#hardened-security)**  
+  * **[Prometheus Monitoring](#prometheus-monitoring)**  
+  * **[Health Probes](#health-probes)**  
+  * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+* **[Dependencies](#dependencies)**  
+
+## Summary
+Redis is an in-memory data structure store, widely used as a distributed, scalable key-value database. It supports various data types like strings, hashes, lists, sets, and more, making it 
+versatile for different use cases. Redis excels in performance due to its in-memory nature, making it ideal for caching, real-time analytics, session management, and message brokering. It also 
+offers features like persistence, replication, and high availability through Redis Sentinel and Redis Cluster. With its simple and flexible design, Redis is a popular choice for building 
+high-performance, scalable applications.  
+
+> 📖 Learn more about **[Redis Cluster Operator](https://redis.io/tutorials/operate/orchestration/kubernetes-operator/)**.
+
+
+
+
+The Grafana sidecars automatically discover and load Grafana configuration from Kubernetes ConfigMaps and Secrets without restarting Grafana.
+
+| Sidecar | Purpose |
+|---|---|
+| `dashboards` | Automatically imports dashboards from ConfigMaps |
+| `datasources` | Automatically imports datasources from ConfigMaps/Secrets |
+
+With `searchNamespace: ALL`, Grafana watches the entire cluster for matching resources. This enables "dashboards/datasources as code" and is commonly used in GitOps Kubernetes se
+
+
+
+THIS IS NOT GOOD BUT MAYBE WE NEED AND OVERVIEW OF VOLUMES / SECRETS ???
+Grafana stores its persistent state primarily in `/var/lib/grafana`, which is typically backed by a PVC in Kubernetes. This includes plugins, cache, and optional embedded database data if no external database is used. Configuration and provisioning are mounted separately and are not persisted. Temporary runtime data is stored in `/tmp` and `/var/tmp` using ephemeral volumes.
+
+| Path | Type | Purpose | Persistence |
+|------|------|---------|-------------|
+| `/var/lib/grafana` | PVC | Plugins, cache, state | Persistent |
+| `/etc/grafana/grafana.ini` | ConfigMap | Main configuration | Non-persistent |
+| `/etc/grafana/provisioning` | ConfigMap | Dashboards/datasources | Non-persistent |
+| `/tmp`, `/var/tmp` | emptyDir | Runtime temp files | Ephemeral |
+
+
+
+
+
+
+
+## Registration
+This deployment provisions a Redis cluster in Kubernetes.  
+
+The deployment uses the [Redis Cluster Operator Helm Chart](https://artifacthub.io/packages/helm/ot-container-kit/redis-operator) to provision and manage the underlying infrastructure required 
+for a Redis cluster. This operator is responsible for creating, configuring, and maintaining all Redis cluster components, ensuring a consistent and automated deployment model.
+
+As part of the deployment configuration, explicit versioning is required for both the Redis container image and the Redis exporter image to ensure reproducibility and compatibility across 
+environments. Available Redis image versions can be reviewed in the [Redis Image Releases](https://quay.io/repository/opstree/redis?tab=tags), while corresponding exporter versions are listed 
+in the [Redis Exporter Images](https://quay.io/repository/opstree/redis-exporter?tab=tags).
+
+https://artifacthub.io/packages/helm/grafana-community/grafana
+
+
+Before running the GitHub Action, add the following GitHub organization secrets.  
+
+| Secret                                    | Type    | Description                       |
+| ----------------------------------------- | ------- | --------------------------------- |
+| `{{environment}}_GRAFANA_ADMIN_USERNAME`  | secrets | The admin password for Grafana.   |
+| `{{environment}}_GRAFANA_ADMIN_PASSWORD`  | secrets | The admin password for Grafana.   |
+
+To access the Redis cluster locally, use port-forwarding to expose the management UI by running the following command.
+
+```powershell
+kubectl port-forward $env:APP_NAME-leader-0 6379 -n $env:KUBERNETES_NAMESPACE;
+```
+
+To retrieve the deployed Redis cluster from the Custom Resource Definition (CRD), run.  
+
+```powershell
+kubectl get rabbitmqclusters -n {{namespace}};
+```
+
+To see the available configuration options for the deployment, use the following commands.  
+
+```powershell
+kubectl explain rediscluster;
+
+kubectl explain rediscluster.{{group}};
+```
+
+### High Availability
+The Redis deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
+and resilience by reducing the risk of multiple Redis pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
+pods across the cluster whenever possible.  
+
+### Hardened Security
+The security context is hardened for production use. Privilege escalation is disabled, and all Linux capabilities are dropped to minimize the container’s attack surface.
+
+### Prometheus Monitoring
+The Redis cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
+ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
+
+> ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
+
+### Health Probes
+The deployment configures readiness, and liveness probes for both leaders and followers.  
+
+### Horizontal Pod Autoscaler
+- HPA disabled because it doesn't make much sense for Grafana. It can be enabled defining 
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPU: "60"
+  targetMemory: ""
+  behavior: {}
+
+
+
+Redis Cluster scaling is stateful and slot-based, meaning it cannot safely rely on Kubernetes HPA mechanisms. Adding or removing nodes requires resharding, where data must be redistributed 
+across the cluster to maintain consistency and availability. As a result, simple CPU or memory autoscaling would not guarantee correct data placement and could lead to an unbalanced or 
+unstable cluster.
+
+For this reason, the Redis Operator does not support Kubernetes HPA for `RedisCluster`.  
+
+Instead, scaling is performed explicitly by updating the `clusterSize` field in the `RedisCluster` specification. The operator then handles the full lifecycle of the change, including 
+provisioning new pods, joining them to the cluster, and redistributing hash slots to ensure even data distribution and cluster health.  
+
+## Dependencies
+Redis has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
+
+| Dependency                                                                                                                            | Description                          | 
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).  |
+MySQL
+SendGrid

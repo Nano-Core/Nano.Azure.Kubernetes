@@ -1,6 +1,11 @@
 name: Build and Deploy
 on:
-  push
+  pull_request:
+    branches:
+      - master 
+  push:
+    branches:
+      - master 
 env:
   APP_NAME: redis
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -44,6 +49,7 @@ jobs:
         shell: pwsh
         run: |
           Get-Content .kubernetes/redis-operator-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-operator-values.tmp.yaml;
+          Get-Content .kubernetes/redis-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-auth-secret.tmp.yaml;
           Get-Content .kubernetes/redis-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-cluster.tmp.yaml;
           Get-Content .kubernetes/redis-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-service-monitor.tmp.yaml;
 
@@ -51,12 +57,13 @@ jobs:
               -g $env:AZURE_GROUP_KUBERNETES `
               -n $env:KUBERNETES_CLUSTER `
               --file .kubernetes/redis-operator-values.tmp.yaml `
+              --file .kubernetes/redis-auth-secret.tmp.yaml `
               --file .kubernetes/redis-cluster.tmp.yaml `
               --file .kubernetes/redis-service-monitor.tmp.yaml `
               --command @"
                   set -eu
  
-                  kubectl create secret generic $env:APP_NAME-auth --namespace $env:KUBERNETES_NAMESPACE --from-literal=password=$env:REDIS_PASSWORD --save-config --dry-run=client -o yaml | kubectl apply -f - || exit 1
+                  kubectl apply -f redis-auth-secret.tmp.yaml || exit 1
 
                   helm repo add ot-helm https://ot-container-kit.github.io/helm-charts || exit 2
                   helm repo update || exit 3
@@ -86,6 +93,15 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
+
+      - name: Slack Notification
+        if: always()
+        uses: act10ns/slack@v2
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          config: .github/config/slack.yml
+          status: ${{ job.status }}
+          channel: ${{ vars.SLACK_CHANNEL }}
 
       - name: Slack Notification
         if: always()

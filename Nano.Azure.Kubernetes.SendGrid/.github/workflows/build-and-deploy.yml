@@ -1,0 +1,76 @@
+name: Build and Deploy
+on:
+  pull_request:
+    branches:
+      - master 
+  push:
+    branches:
+      - master 
+env:
+  APP_NAME: sendgrid
+  VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
+  AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
+  KUBERNETES_NAMESPACE: apps
+  SENDGRID_HOST: ${{ secrets.SENDGRID_HOST }}
+  SENDGRID_USERNAME: ${{ secrets.SENDGRID_USERNAME }}
+  SENDGRID_API_KEY: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_SENDGRID_API_KEY || secrets.STAGING_SENDGRID_API_KEY }}
+  SENDGRID_SENDER_NAME: ${{ vars.SENDGRID_SENDER_NAME }}
+  SENDGRID_SENDER_EMAIL: ${{ vars.SENDGRID_SENDER_EMAIL }}
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: ${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure Login
+        shell: pwsh
+        run: |
+          az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
+          az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+          az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
+
+      - name: Deploy SendGrid Secret
+        shell: pwsh
+        run: |
+          Get-Content .kubernetes/sendgrid-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/sendgrid-auth-secret.tmp.yaml;
+
+          $result = az aks command invoke `
+              -g $env:AZURE_GROUP_KUBERNETES `
+              -n $env:KUBERNETES_CLUSTER `
+              --file .kubernetes/sendgrid-auth-secret.tmp.yaml `
+              --command @"
+                  set -eu
+
+                  kubectl apply -f sendgrid-auth-secret.tmp.yaml || exit 1
+          "@ --output json | ConvertFrom-Json;
+
+          echo $result;
+
+          if ($result.exitCode -ne 0)
+          {
+              throw "error";
+          }
+ 
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.VERSION }}
+          name: "Release ${{ env.VERSION }}"
+          body: |
+            Version: ${{ env.VERSION }}
+            Commit: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
