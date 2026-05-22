@@ -1,0 +1,92 @@
+replicaCount: %KUBERNETES_REPLICA_COUNT%
+
+ollama:
+  port: 11434
+  gpu:
+    enabled: true
+    draEnabled: false
+    draDriverClass: "gpu.nvidia.com"
+    type: 'nvidia'
+    nvidiaResource: "nvidia.com/gpu"
+  models:
+    pull: []
+    run: []
+    clean: true
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 11434
+  nodePort: 31434
+
+resources:
+  requests:
+    cpu: %KUBERNETES_CPU_REQUEST%
+    memory: %KUBERNETES_MEMORY_REQUEST%
+  limits:
+    cpu: %KUBERNETES_CPU_LIMIT%
+    memory: %KUBERNETES_MEMORY_LIMIT%
+
+livenessProbe:
+  enabled: true
+  path: /
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  path: /
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 6
+  successThreshold: 1
+
+persistentVolume:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 30Gi
+
+nodeSelector:
+  kubernetes.io/os: linux
+  nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: %APP_NAME%
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: %APP_NAME%
+
+terminationGracePeriodSeconds: 120
+
+tests:
+  enabled: false

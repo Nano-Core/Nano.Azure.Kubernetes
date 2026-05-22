@@ -7,6 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
+  * **[Ollama Configuruation](#ollama-configuruation)**  
   * **[High Availability](#topology-affinity)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
@@ -32,6 +33,14 @@ To access Ollama locally, use port-forwarding to expose the pod by running the f
 ```powershell
 kubectl port-forward $env:APP_NAME 11434 -n $env:KUBERNETES_NAMESPACE;
 ```
+
+### Ollama Configuration
+GPU support is enabled by default, and the deployment is designed to run on NVIDIA GPU nodes using Kubernetes GPU resource scheduling. This ensures inference workloads can take advantage of 
+hardware acceleration when available.
+
+Model management is fully declarative. Models can be defined for both pulling and loading into memory, giving full control over which models are available at runtime. Any models removed from 
+the configuration will be deleted during deployment to keep the environment aligned with the declared state.  By default, no models are configured. It is therefore required to explicitly define 
+which models should be pulled or loaded, and to ensure that sufficient memory and GPU resources are allocated for the selected models.
 
 ### High Availability
 The Ollama deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
@@ -63,6 +72,14 @@ scaling based on CPU or memory metrics can lead to inefficient resource usage an
 
 Instead of automatic scaling, capacity is managed explicitly by controlling the number of replicas. This ensures predictable performance, avoids unnecessary model reloads, and provides stable 
 latency characteristics for inference workloads.  
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
 
 ### GPU Nodepool
 This deployment requires a pre-provisioned GPU node pool in the Kubernetes cluster, as workloads are intended to run on GPU-enabled nodes for hardware-accelerated inference.
