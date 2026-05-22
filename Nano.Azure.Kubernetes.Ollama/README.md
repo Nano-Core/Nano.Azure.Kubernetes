@@ -73,13 +73,16 @@ scaling based on CPU or memory metrics can lead to inefficient resource usage an
 Instead of automatic scaling, capacity is managed explicitly by controlling the number of replicas. This ensures predictable performance, avoids unnecessary model reloads, and provides stable 
 latency characteristics for inference workloads.  
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
+Autoscaling may be enabled by adding the following configuration to `ollama-values.yaml`.
 
+```yaml
+autoscaling:
+  enabled: true
+  minReplicas: {{min-replica}}
+  maxReplicas: {{max-replica}}
+  targetCPUUtilizationPercentage: 180
+  targetMemoryUtilizationPercentage: 180
+````
 
 ### GPU Nodepool
 This deployment requires a pre-provisioned GPU node pool in the Kubernetes cluster, as workloads are intended to run on GPU-enabled nodes for hardware-accelerated inference.
