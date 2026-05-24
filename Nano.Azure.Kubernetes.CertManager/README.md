@@ -1,5 +1,4 @@
 # Nano.Azure.Kubernetes.CertManager
-
 > _Cert Manager deployment for managing SSL certificates for Nano applications._
 
 ***
@@ -21,8 +20,8 @@ administrative overhead. By automating these processes, CertManager helps ensure
 
 > 📖 Learn more about **[Cert-Manager](https://cert-manager.io)** and the **[Cert-Manager Helm Chart](https://artifacthub.io/packages/helm/cert-manager/cert-manager)**.  
 
-To verify issued certificates, you can use [crt.sh](https://crt.sh/) by searching for `{domain-name}`.  
-To assess the security level and configuration quality of a certificate, you can use the [SSL Labs SSL Test](https://www.ssllabs.com/ssltest/analyze.html?d={domain-name}&hideResults=on).  
+To verify issued certificates, you can use **[crt.sh](https://crt.sh/)** by searching for `{domain-name}`.  
+To assess the security level and configuration quality of a certificate, you can use the **[SSL Labs SSL Test](https://www.ssllabs.com/ssltest/analyze.html?d={domain-name}&hideResults=on)**.  
 
 ## Registration
 This deployment provisions Cert-Manager in AKS.  
@@ -30,7 +29,7 @@ This deployment provisions Cert-Manager in AKS.
 The deployment is based on the cert-manager tutorial **[Getting started with cert-manager on Azure Kubernetes Service (AKS) and Let’s Encrypt](https://cert-manager.io/docs/tutorials/getting-started-aks-letsencrypt)**, 
 available in the official cert-manager documentation, and Microsoft’s guide **[Using cert-manager with Let’s Encrypt and Gateway API on Azure Application Gateway for Containers](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-cert-manager-lets-encrypt-gateway-api)**.  
 
-It works in conjunction with [Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns) to issue certificates using the DNS-01 challenge method and 
+It works in conjunction with **[Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)** to issue certificates using the DNS-01 challenge method and 
 supports any number of domain names within a single certificate.  
 
 Before running the GitHub Action, add the following GitHub organization secrets.  
