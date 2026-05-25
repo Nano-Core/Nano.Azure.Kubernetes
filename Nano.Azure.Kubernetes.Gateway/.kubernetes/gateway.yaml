@@ -5,7 +5,7 @@ metadata:
   namespace: %KUBERNETES_NAMESPACE%
   annotations:
     alb.networking.azure.io/alb-namespace: %KUBERNETES_NAMESPACE%
-    alb.networking.azure.io/alb-name: %APP_NAME%-load-balancer
+    alb.networking.azure.io/alb-name: %KUBERNETES_CLUSTER%-alb
 spec:
   gatewayClassName: azure-alb-external
   listeners:

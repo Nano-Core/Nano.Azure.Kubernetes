@@ -10,7 +10,6 @@
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
   * **[API Gateway](#api-gateway)**  
-  * **[Azure Application Load-Balancer](#azure-application-load-balancer)**  
   * **[SSL Certificate](#ssl-certificate)**  
   * **[DNS Records](#dns-records)**  
 * **[Dependencies](#dependencies)**  
@@ -31,30 +30,17 @@ To retrieve the deployed public Gateway from the Custom Resource Definition (CRD
 kubectl get gateways -n {{namespace}};
 ```
 
-And the deployed application load balancer.
-
-```powershell
-kubectl get ApplicationLoadBalancer -n {{namespace}};
-```
-
 ### API Gateway
 This configuration defines a Kubernetes `Gateway` that exposes applications over HTTPS on port 443 with TLS termination handled at the gateway. It uses the `azure-alb-external` GatewayClass, 
 which integrates the Gateway API with Azure Application Gateway for Containers to manage external traffic routing into the cluster.  
 
-The Gateway integrates with [Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns), providing stable public hostnames without the need to 
-manually manage IP addresses. DNS records are automatically mapped to the address managed by the underlying Application Load Balancer, and multiple domain names are supported.  
+The Gateway integrates with **[Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**, providing stable public hostnames without the need to 
+manually manage IP addresses. DNS records are automatically mapped to the address managed by the underlying Application Load Balancer (ALB), configured as part of the 
+**[Azure Kubernetes Cluster Deployment](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**
 
-The deployment is based on Microsoft’s guide **[Create Application Gateway for Containers managed by ALB Controller](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/quickstart-create-application-gateway-for-containers-managed-by-alb-controller)**.  
+Multiple domain names are supported.  
 
-> ⚠️ Only a single `Gateway` should be deployed. These resources are managed by Azure.  
-
-### Azure Application Load Balancer
-The Application Load Balancer provides the underlying Azure-managed traffic distribution layer for Kubernetes ingress. It ensures external traffic is reliably routed into the cluster through 
-the configured subnet and integrates with the Gateway API for application-level routing.  
-
-This resource is managed by Azure and forms the foundation for inbound connectivity.  
-
-> ⚠️ Only a single `ApplicationLoadBalancer` should be deployed. These resources are managed by Azure.  
+> ⚠️ Only a single `Gateway` should be deployed.  
 
 ### SSL Certificate
 This resource defines a TLS certificate managed by cert-manager and issued via Let’s Encrypt using the configured ClusterIssuer. It automatically includes the specified domain names and handles 

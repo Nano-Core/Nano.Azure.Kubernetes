@@ -14,8 +14,8 @@ env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
+  AZURE_GROUP_DATABASE: ${{ vars.AZURE_RESOURCE_GROUP_DATABASE }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
-  KUBERNETES_CLUSTER: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_KUBERNETES_CLUSTER || vars.STAGING_KUBERNETES_CLUSTER }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: default
   KUBERNETES_REPLICA_COUNT: 1
@@ -26,11 +26,8 @@ env:
   GRAFANA_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_GRAFANA_ADMIN_USERNAME || secrets.STAGING_GRAFANA_ADMIN_USERNAME }}
   GRAFANA_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_GRAFANA_ADMIN_PASSWORD || secrets.STAGING_GRAFANA_ADMIN_PASSWORD }}
   SQL_TYPE: mysql
-  SQL_HOST: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_HOST || secrets.STAGING_DATA_HOST }}
-  SQL_PORT: ${{ secrets.DATA_PORT }} 
   SQL_NAME: grafana
   SQL_USER: grafana-user
-  SQL_ADMIN_USER: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_ADMIN_USER || secrets.STAGING_DATA_ADMIN_USER }}
   SQL_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_ADMIN_PASSWORD || secrets.STAGING_DATA_ADMIN_PASSWORD }}
 jobs:
   build-and-deploy:
@@ -49,18 +46,23 @@ jobs:
         run: |
           az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
           az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+
+          $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
           az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
 
       - name: Initialize MySQL Database
         if: env.SQL_TYPE == 'mysql'
         shell: pwsh
         run: |
-          $env:MYSQL_ADMIN_CONNECTIONSTRING = "Server=$env:SQL_HOST;Port=$env:SQL_PORT;Database=mysql;Uid=$env:SQL_ADMIN_USER;Pwd=$env:SQL_ADMIN_PASSWORD;SslMode=Preferred";
+          $env:SQL_HOST = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].fullyQualifiedDomainName;
+          $env:SQL_PORT = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].databasePort;
+          $env:SQL_ADMIN_USER = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].administratorLogin;
+          $env:SQL_ADMIN_CONNECTIONSTRING = "Server=$env:SQL_HOST;Port=$env:SQL_PORT;Database=mysql;Uid=$env:SQL_ADMIN_USER;Pwd=$env:SQL_ADMIN_PASSWORD;SslMode=Preferred";
 
           apt-get update;
           apt-get install -y mysql-client;
 
-          mysql -e "CREATE DATABASE IF NOT EXISTS grafana" $env:MYSQL_ADMIN_CONNECTIONSTRING;
+          mysql -e "CREATE DATABASE IF NOT EXISTS grafana" $env:SQL_ADMIN_CONNECTIONSTRING ;
 
           $userExists = mysql --batch -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$env:SQL_USER');" $env:MYSQL_ADMIN_CONNECTIONSTRING;
           if ($userExists -eq 0) 
@@ -69,7 +71,7 @@ jobs:
                   CREATE USER '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; `
                   GRANT SELECT, INSERT, UPDATE, DELETE ON $database.* TO '$env:SQL_USER'@'%'; `
                   FLUSH PRIVILEGES;" `
-                  $env:MYSQL_ADMIN_CONNECTIONSTRING;
+                  $env:SQL_ADMIN_CONNECTIONSTRING ;
           }
 
           $env:SQL_CA_CERT = Get-Content .sql/MySql/.certificates/DigiCertGlobalRootCA.pem -Raw;
