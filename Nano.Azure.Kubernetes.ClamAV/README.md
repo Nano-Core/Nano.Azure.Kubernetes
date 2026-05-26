@@ -7,6 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
+  * **[Automated Virus Database Updates](#automated-virus-database-updates)**  
   * **[High Availability](#topology-affinity)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
@@ -40,6 +41,46 @@ helm status $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
 
 helm uninstall $env:APP_NAME -n $env:KUBERNETES_NAMESPACE
 ```
+
+### Automated Virus Database Updates
+The ClamAV deployment uses _FreshClam_ to ensure virus definitions are continuously updated without manual intervention. Each pod runs `freshclam` in daemon mode, which periodically checks 
+the official ClamAV mirrors **once every hour** for updated signature databases and downloads them directly into the `/data` persistent volume.  
+
+This ensures that all ClamAV instances operate with up-to-date threat intelligence while maintaining consistency across the StatefulSet.
+
+| Component           | Status     |
+| ------------------- | ---------- |
+| FreshClam running   | ✅ yes     |
+| Auto updates        | ✅ enabled |
+| Hourly checks       | ✅ enabled |
+| Database download   | ✅ active  |
+| Persistence (/data) | ✅ enabled |
+| Clamd sync          | ✅ active  |
+| Health checks       | ✅ OK      |
+
+Overall, the deployment provides fully automated virus definition updates with no operational overhead, ensuring continuous protection and consistent scanning across all replicas.
+
+### Automated Virus Database Updates
+The ClamAV deployment uses _FreshClam_ to ensure virus definitions are continuously updated without manual intervention. Each pod runs `freshclam` in daemon mode, which periodically checks 
+the official ClamAV mirrors and downloads updated signature databases directly into the `/data` persistent volume.
+
+This ensures all ClamAV instances operate with up-to-date threat intelligence while maintaining consistency across the StatefulSet.
+
+| Component           | Status    |
+| ------------------- | --------- |
+| FreshClam running   | ✅ yes     |
+| Auto updates        | ✅ enabled |
+| Database download   | ✅ working |
+| Persistence (/data) | ✅ working |
+| Clamd sync          | ✅ working |
+| Health checks       | ✅ OK      |
+
+Overall, the deployment provides fully automated virus definition updates with no manual intervention required, ensuring continuous protection and consistent scanning capability across 
+all replicas.
+
+
+
+
 
 ### High Availability
 The ClamAV deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 

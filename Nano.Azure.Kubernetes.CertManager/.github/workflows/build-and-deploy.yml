@@ -78,8 +78,8 @@ jobs:
 
               helm upgrade --install $env:APP_NAME oci://quay.io/jetstack/charts/cert-manager --atomic --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f certmanager-values.tmp.yaml || exit 1
 
-              kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 1
-              kubectl apply -f certmanager-service-monitor.tmp.yaml || exit 2
+              kubectl apply -f certmanager-cluster-issuer.tmp.yaml || exit 2
+              kubectl apply -f certmanager-service-monitor.tmp.yaml || exit 3
           "@;
 
           $result = az aks command invoke `
