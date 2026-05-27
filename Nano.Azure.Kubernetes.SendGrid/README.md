@@ -32,6 +32,7 @@ Before running the GitHub Action, add the following GitHub organization vars and
 | `SENDGRID_SENDER_EMAIL`            | vars    | Sender email address for emails.     |
 
 ## Dependencies
-| Dependency                                                                                                                            | Description                          | 
-| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**  | The Azure Kubernetes Service (AKS).  |
+| Dependency                                                                                                                                                                                           | Description                                  | 
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |

@@ -1,0 +1,102 @@
+name: Build and Deploy
+on:
+  pull_request:
+    branches:
+      - master 
+  push:
+    branches:
+      - master 
+env:
+  APP_NAME: github-runner
+  VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
+  AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
+  AZURE_GROUP_DELIVERY: ${{ vars.AZURE_RESOURCE_GROUP_DELIVERY }} 
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  GITHUB_RUNNER_CONTAINER_IMAGE_TAG: ubuntu-noble
+  GITHUB_RUNNER_OWNER: ${{ github.repository_owner }}
+  GITHUB_RUNNER_APP_ID: ${{ secrets.GITHUBRUNNER_APP_ID }}
+  GITHUB_RUNNER_INSTALLATION_ID: ${{ secrets.GITHUBRUNNER_INSTALLATION_ID }}
+  GITHUB_RUNNER_KEY: ${{ secrets.GITHUBRUNNER_KEY }}
+  GITHUB_RUNNER_LABEL: ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: ${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure Login
+        shell: pwsh
+        run: |
+          az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
+          az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+
+          $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
+          az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
+
+      - name: Deploy GitHub Self-Hosted Runner
+        shell: pwsh
+        run: |
+          $JobExists = az containerapp job list -g $env:AZURE_GROUP_DELIVERY --query "[?name=='$env:APP_NAME'].name" -o tsv;
+
+          if (-not $JobExists) 
+          {
+              $env:GITHUB_RUNNER_ENVIRONMENT_NAME = az containerapp env list -g $env:AZURE_GROUP_DELIVERY --query [0].name -o tsv;
+
+              az containerapp job create `
+                  --name $env:APP_NAME `
+                  --resource-group $env:AZURE_GROUP_DELIVERY `
+                  --environment $env:GITHUB_RUNNER_ENVIRONMENT_NAME `
+                  --trigger-type Event `
+                  --replica-timeout 1800 `
+                  --replica-retry-limit 1 `
+                  --min-executions 0 `
+                  --max-executions 10 `
+                  --scale-rule-name "github-runner-scaler" `
+                  --scale-rule-type "github-runner" `
+                  --scale-rule-metadata "owner=$env:GITHUB_RUNNER_OWNER runnerScope=org applicationID=$env:GITHUB_RUNNER_APP_ID installationID=$env:GITHUB_RUNNER_INSTALLATION_ID" `
+                  --scale-rule-auth "appKey=github-app-key-secret" `
+                  --image "myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG" `
+                  --cpu 2 `
+                  --memory 4Gi `
+                  --secrets "github-app-key-secret=$env:GITHUB_RUNNER_KEY" `
+                  --env-vars "GH_OWNER=$env:GITHUB_RUNNER_OWNER" "GH_ORG=$env:GITHUB_RUNNER_OWNER" "APP_ID=$env:GITHUB_RUNNER_APP_ID" "APP_PRIVATE_KEY=secretref:github-app-key-secret" "EPHEMERAL=true" "RUNNER_LABELS=$env:GITHUB_RUNNER_LABEL";
+          } 
+          else 
+          {
+              az containerapp job update `
+                  -n $env:APP_NAME `
+                  -g $env:AZURE_GROUP_DELIVERY `
+                  --image myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG `
+                  --env-vars "GH_OWNER=$env:GITHUB_RUNNER_OWNER" "GH_ORG=$env:GITHUB_RUNNER_OWNER" "APP_ID=$env:GITHUB_RUNNER_APP_ID" "APP_PRIVATE_KEY=secretref:github-app-key-secret" "EPHEMERAL=true" "RUNNER_LABELS=$env:GITHUB_RUNNER_LABEL";
+          }
+
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.VERSION }}
+          name: "Release ${{ env.VERSION }}"
+          body: |
+            Version: ${{ env.VERSION }}
+            Commit: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
+
+      - name: Slack Notification
+        if: always()
+        uses: act10ns/slack@v2
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          config: .github/config/slack.yml
+          status: ${{ job.status }}
+          channel: ${{ vars.SLACK_CHANNEL }}
