@@ -15,6 +15,7 @@ env:
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_GROUP_DELIVERY: ${{ vars.AZURE_RESOURCE_GROUP_DELIVERY }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  GITHUB_RUNNER_CONTAINER_IMAGE: myoung34/github-runner
   GITHUB_RUNNER_CONTAINER_IMAGE_TAG: ubuntu-noble
   GITHUB_RUNNER_OWNER: ${{ github.repository_owner }}
   GITHUB_RUNNER_APP_ID: ${{ secrets.GITHUBRUNNER_APP_ID }}
@@ -55,6 +56,7 @@ jobs:
                   --name $env:APP_NAME `
                   --resource-group $env:AZURE_GROUP_DELIVERY `
                   --environment $env:GITHUB_RUNNER_ENVIRONMENT_NAME `
+                  --image "myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG" `
                   --trigger-type Event `
                   --replica-timeout 1800 `
                   --replica-retry-limit 1 `
@@ -64,7 +66,6 @@ jobs:
                   --scale-rule-type "github-runner" `
                   --scale-rule-metadata "owner=$env:GITHUB_RUNNER_OWNER runnerScope=org applicationID=$env:GITHUB_RUNNER_APP_ID installationID=$env:GITHUB_RUNNER_INSTALLATION_ID" `
                   --scale-rule-auth "appKey=github-app-key-secret" `
-                  --image "myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG" `
                   --cpu 2 `
                   --memory 4Gi `
                   --secrets "github-app-key-secret=$env:GITHUB_RUNNER_KEY" `
@@ -75,7 +76,7 @@ jobs:
               az containerapp job update `
                   -n $env:APP_NAME `
                   -g $env:AZURE_GROUP_DELIVERY `
-                  --image "myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG" `
+                  --image "${env:GITHUB_RUNNER_CONTAINER_IMAGE}:${env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG}" `
                   --set-env-vars "RUNNER_LABELS=$env:GITHUB_RUNNER_ENV_LABEL";
           }
 
