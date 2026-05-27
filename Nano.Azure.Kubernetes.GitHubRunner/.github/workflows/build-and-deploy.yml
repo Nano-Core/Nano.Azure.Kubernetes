@@ -20,7 +20,7 @@ env:
   GITHUB_RUNNER_APP_ID: ${{ secrets.GITHUBRUNNER_APP_ID }}
   GITHUB_RUNNER_INSTALLATION_ID: ${{ secrets.GITHUBRUNNER_INSTALLATION_ID }}
   GITHUB_RUNNER_KEY: ${{ secrets.GITHUBRUNNER_KEY }}
-  GITHUB_RUNNER_LABEL: ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+  GITHUB_RUNNER_ENV_LABEL: ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -68,15 +68,15 @@ jobs:
                   --cpu 2 `
                   --memory 4Gi `
                   --secrets "github-app-key-secret=$env:GITHUB_RUNNER_KEY" `
-                  --env-vars "GH_OWNER=$env:GITHUB_RUNNER_OWNER" "GH_ORG=$env:GITHUB_RUNNER_OWNER" "APP_ID=$env:GITHUB_RUNNER_APP_ID" "APP_PRIVATE_KEY=secretref:github-app-key-secret" "EPHEMERAL=true" "RUNNER_LABELS=$env:GITHUB_RUNNER_LABEL";
+                  --env-vars "GH_OWNER=$env:GITHUB_RUNNER_OWNER" "GH_ORG=$env:GITHUB_RUNNER_OWNER" "APP_ID=$env:GITHUB_RUNNER_APP_ID" "APP_PRIVATE_KEY=secretref:github-app-key-secret" "EPHEMERAL=true" "RUNNER_LABELS=$env:GITHUB_RUNNER_ENV_LABEL";
           } 
           else 
           {
               az containerapp job update `
                   -n $env:APP_NAME `
                   -g $env:AZURE_GROUP_DELIVERY `
-                  --image myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG `
-                  --env-vars "GH_OWNER=$env:GITHUB_RUNNER_OWNER" "GH_ORG=$env:GITHUB_RUNNER_OWNER" "APP_ID=$env:GITHUB_RUNNER_APP_ID" "APP_PRIVATE_KEY=secretref:github-app-key-secret" "EPHEMERAL=true" "RUNNER_LABELS=$env:GITHUB_RUNNER_LABEL";
+                  --image "myoung34/github-runner:$env:GITHUB_RUNNER_CONTAINER_IMAGE_TAG" `
+                  --set-env-vars "RUNNER_LABELS=$env:GITHUB_RUNNER_ENV_LABEL";
           }
 
       - name: GitHub Release
