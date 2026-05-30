@@ -26,7 +26,10 @@ env:
   RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_RABBITMQ_ERLANG_COOKIE || vars.STAGING_RABBITMQ_ERLANG_COOKIE }}
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -48,33 +51,33 @@ jobs:
       - name: Deploy RabbitMQ
         shell: pwsh
         run: |
+          kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml;
+
           Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
+          kubectl apply -f .kubernetes/rabbitmq-cluster.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/rabbitmq-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/rabbitmq-auth-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/rabbitmq-load-definition-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/rabbitmq-load-definition-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/rabbitmq-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-service-monitor.tmp.yaml;
-
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP_KUBERNETES `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/rabbitmq-cluster.tmp.yaml `
-              --file .kubernetes/rabbitmq-auth-secret.tmp.yaml `
-              --file .kubernetes/rabbitmq-load-definition-secret.tmp.yaml `
-              --file .kubernetes/rabbitmq-service-monitor.tmp.yaml `
-              --command @"
-                  set -eu
-  
-                  kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml || exit 1
-
-                  kubectl apply -f rabbitmq-cluster.tmp.yaml || exit 2
-                  kubectl apply -f rabbitmq-auth-secret.tmp.yaml || exit 3
-                  kubectl apply -f rabbitmq-load-definition-secret.tmp.yaml || exit 4
-                  kubectl apply -f rabbitmq-service-monitor.tmp.yaml || exit 5
-          "@ --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          kubectl apply -f .kubernetes/rabbitmq-service-monitor.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
@@ -90,7 +93,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

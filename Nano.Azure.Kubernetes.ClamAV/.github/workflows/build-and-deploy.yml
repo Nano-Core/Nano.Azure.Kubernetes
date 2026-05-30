@@ -28,7 +28,10 @@ env:
   KUBERNETES_CPU_UTILIZATION: 180
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -50,32 +53,20 @@ jobs:
       - name: Deploy ClamAV
         shell: pwsh
         run: |
+          helm repo add wiremind https://wiremind.github.io/wiremind-helm-charts;
+          helm repo update;
+
           Get-Content .kubernetes/clamav-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-values.tmp.yaml;
-          Get-Content .kubernetes/clamav-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-service-monitor.tmp.yaml;
-
-          $command = @"
-              set -eu
-
-              helm repo add wiremind https://wiremind.github.io/wiremind-helm-charts || exit 1
-              helm repo update || exit 2
-
-              helm upgrade $env:APP_NAME wiremind/clamav --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f clamav-values.tmp.yaml || exit 3
+          helm upgrade $env:APP_NAME wiremind/clamav --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/clamav-values.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
     
-              kubectl apply -f clamav-service-monitor.tmp.yaml || exit 4
-          "@;
-
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/clamav-values.tmp.yaml `
-              --file .kubernetes/clamav-service-monitor.tmp.yaml `
-              --command $command `
-              --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          Get-Content .kubernetes/clamav-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/clamav-service-monitor.tmp.yaml;
+          kubectl apply -f .kubernetes/clamav-service-monitor.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
@@ -91,7 +82,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

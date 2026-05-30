@@ -21,7 +21,10 @@ env:
   CERTIFICATE_ORGANIZATION: Nano-Core
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -54,28 +57,19 @@ jobs:
               }
           ) -join "`n";
 
+          $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
+
           Get-Content .kubernetes/gateway.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/gateway.tmp.yaml;
+          kubectl apply -f .kubernetes/gateway.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/certificate.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/certificate.tmp.yaml;
-          
-          $command = @"
-              set -eu
-
-              kubectl apply -f gateway.tmp.yaml || exit 1
-              kubectl apply -f certificate.tmp.yaml || exit 2
-          "@;
-
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP_KUBERNETES `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/gateway.tmp.yaml `
-              --file .kubernetes/certificate.tmp.yaml `
-              --command $command `
-              --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          kubectl apply -f .kubernetes/certificate.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
@@ -131,7 +125,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

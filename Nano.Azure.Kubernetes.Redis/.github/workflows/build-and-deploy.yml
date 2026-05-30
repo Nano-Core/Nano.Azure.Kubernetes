@@ -27,7 +27,10 @@ env:
   REDIS_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_REDIS_PASSWORD || secrets.STAGING_REDIS_PASSWORD }}
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -49,36 +52,34 @@ jobs:
       - name: Deploy Redis Cluster
         shell: pwsh
         run: |
-          Get-Content .kubernetes/redis-operator-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-operator-values.tmp.yaml;
+          helm repo add ot-helm https://ot-container-kit.github.io/helm-charts;
+          helm repo update;
+
           Get-Content .kubernetes/redis-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/redis-auth-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+          Get-Content .kubernetes/redis-operator-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-operator-values.tmp.yaml;
+          helm upgrade $env:APP_NAME ot-helm/redis-operator --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/redis-operator-values.tmp.yaml --wait --timeout 10m;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/redis-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-cluster.tmp.yaml;
+          kubectl apply -f .kubernetes/redis-cluster.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/redis-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-service-monitor.tmp.yaml;
-
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP_KUBERNETES `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/redis-operator-values.tmp.yaml `
-              --file .kubernetes/redis-auth-secret.tmp.yaml `
-              --file .kubernetes/redis-cluster.tmp.yaml `
-              --file .kubernetes/redis-service-monitor.tmp.yaml `
-              --command @"
-                  set -eu
- 
-                  kubectl apply -f redis-auth-secret.tmp.yaml || exit 1
-
-                  helm repo add ot-helm https://ot-container-kit.github.io/helm-charts || exit 2
-                  helm repo update || exit 3
-
-                  helm upgrade $env:APP_NAME ot-helm/redis-operator --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f redis-operator-values.tmp.yaml --wait --timeout 10m || exit 4
-
-                  kubectl apply -f redis-cluster.tmp.yaml || exit 5
-                  kubectl apply -f redis-service-monitor.tmp.yaml || exit 6
-          "@ --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          kubectl apply -f .kubernetes/redis-service-monitor.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
@@ -94,7 +95,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2
