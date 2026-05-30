@@ -15,7 +15,7 @@ env:
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
-  KUBERNETES_NODEPOOL_COMPUTE: gpu
+  KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: apps
   KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
   KUBERNETES_MEMORY_REQUEST: 1536Mi
@@ -26,7 +26,10 @@ env:
   OLLAMA_RUN_MODELS: '[]'
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -48,32 +51,20 @@ jobs:
       - name: Deploy Ollama
         shell: pwsh
         run: |
+          helm repo add otwld https://helm.otwld.com;
+          helm repo update;
+
           Get-Content .kubernetes/ollama-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/ollama-values.tmp.yaml;
-          Get-Content .kubernetes/ollama-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/ollama-service-monitor.tmp.yaml;
-
-          $command = @"
-              set -eu
-
-              helm repo add otwld https://helm.otwld.com || exit 1
-              helm repo update || exit 2
-
-              helm upgrade $env:APP_NAME otwld/ollama --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f ollama-values.tmp.yaml --set-json "ollama.models.pull=${OLLAMA_PULL_MODELS}" --set-json "ollama.models.run=${OLLAMA_RUN_MODELS}" || exit 3
+          helm upgrade $env:APP_NAME otwld/ollama --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/ollama-values.tmp.yaml --set-json "ollama.models.pull=${OLLAMA_PULL_MODELS}" --set-json "ollama.models.run=${OLLAMA_RUN_MODELS}";
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
     
-              kubectl apply -f ollama-service-monitor.tmp.yaml || exit 4
-          "@;
-
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/ollama-values.tmp.yaml `
-              --file .kubernetes/ollama-service-monitor.tmp.yaml `
-              --command $command `
-              --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          Get-Content .kubernetes/ollama-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/ollama-service-monitor.tmp.yaml;
+          kubectl apply -f .kubernetes/ollama-service-monitor.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
