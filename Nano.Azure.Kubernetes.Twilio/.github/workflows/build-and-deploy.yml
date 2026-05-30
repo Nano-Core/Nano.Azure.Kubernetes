@@ -15,11 +15,13 @@ env:
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NAMESPACE: apps
-  TWILIO_API_KEY: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_TWILIO_API_KEY || vars.STAGING_TWILIO_API_KEY }}
-  TWILIO_SENDER_PHONE_NUMBER: ${{ vars.TWILIO_SENDER_PHONE_NUMBER }}
+  TWILIO_API_KEY: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_TWILIO_API_KEY || secrets.STAGING_TWILIO_API_KEY }}
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -42,21 +44,10 @@ jobs:
         shell: pwsh
         run: |
           Get-Content .kubernetes/twilio-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/twilio-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/twilio-auth-secret.tmp.yaml || exit 1
 
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP_KUBERNETES `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/twilio-auth-secret.tmp.yaml `
-              --command @"
-                  set -eu
-
-                  kubectl apply -f twilio-auth-secret.tmp.yaml || exit 1
-          "@ --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
@@ -72,7 +63,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

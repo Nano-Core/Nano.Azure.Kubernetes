@@ -22,7 +22,10 @@ env:
   SENDGRID_SENDER_EMAIL: ${{ vars.SENDGRID_SENDER_EMAIL }}
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -45,24 +48,13 @@ jobs:
         shell: pwsh
         run: |
           Get-Content .kubernetes/sendgrid-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/sendgrid-auth-secret.tmp.yaml;
-
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP_KUBERNETES `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/sendgrid-auth-secret.tmp.yaml `
-              --command @"
-                  set -eu
-
-                  kubectl apply -f sendgrid-auth-secret.tmp.yaml || exit 1
-          "@ --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          kubectl apply -f .kubernetes/sendgrid-auth-secret.tmp.yaml || exit 1
+ 
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
- 
+
       - name: GitHub Release
         if: github.ref == 'refs/heads/master'
         uses: ncipollo/release-action@v1
@@ -75,7 +67,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2
