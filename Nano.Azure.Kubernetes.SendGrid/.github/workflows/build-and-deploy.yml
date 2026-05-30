@@ -48,7 +48,7 @@ jobs:
         shell: pwsh
         run: |
           Get-Content .kubernetes/sendgrid-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/sendgrid-auth-secret.tmp.yaml;
-          kubectl apply -f .kubernetes/sendgrid-auth-secret.tmp.yaml || exit 1
+          kubectl apply -f .kubernetes/sendgrid-auth-secret.tmp.yaml;
  
           if ($LastExitCode -ne 0) 
           { 
