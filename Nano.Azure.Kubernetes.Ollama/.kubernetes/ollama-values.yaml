@@ -15,6 +15,7 @@ ollama:
 
 podSecurityContext:
   runAsNonRoot: true
+  fsGroup: 2000
   seccompProfile:
     type: RuntimeDefault
 
@@ -23,6 +24,7 @@ securityContext:
   privileged: false
   readOnlyRootFilesystem: true
   runAsNonRoot: true
+  runAsUser: 1000
   capabilities:
     drop:
       - ALL

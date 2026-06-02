@@ -9,6 +9,7 @@ spec:
     additionalConfig: |
       default_queue_type = quorum
       cluster_partition_handling = pause_minority
+      deprecated_features.permit.management_metrics_collection = false
     additionalPlugins:
       - rabbitmq_prometheus
   persistence:
@@ -41,12 +42,18 @@ spec:
               nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
             securityContext:
               runAsNonRoot: true
+              runAsUser: 999
+              runAsGroup: 999
+              fsGroup: 999
+              fsGroupChangePolicy: OnRootMismatch
               seccompProfile:
                 type: RuntimeDefault
             containers:
               - name: rabbitmq
                 securityContext:
                   privileged: false
+                  runAsUser: 999
+                  runAsGroup: 999
                   allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true
                   capabilities:
