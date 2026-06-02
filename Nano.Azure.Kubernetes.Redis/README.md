@@ -20,7 +20,7 @@ versatile for different use cases. Redis excels in performance due to its in-mem
 offers features like persistence, replication, and high availability through Redis Sentinel and Redis Cluster. With its simple and flexible design, Redis is a popular choice for building 
 high-performance, scalable applications.  
 
-> 📖 Learn more about **[Redis Cluster Operator](https://redis.io/tutorials/operate/orchestration/kubernetes-operator/)**.
+> 📖 Learn more about **[Redis Cluster Operator](https://github.com/ot-container-kit/redis-operator)**.
 
 ## Registration
 This deployment provisions a Redis cluster in Kubernetes.  

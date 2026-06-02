@@ -20,6 +20,9 @@ spec:
   persistenceEnabled: true
   podSecurityContext:
     runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 2000
     seccompProfile:
       type: RuntimeDefault
   port: 6379
@@ -42,6 +45,8 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      runAsUser: 1000
+      runAsGroup: 1000
       capabilities:
         drop:
           - ALL
@@ -86,6 +91,8 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      runAsUser: 1000
+      runAsGroup: 1000
       capabilities:
         drop:
           - ALL
@@ -131,6 +138,8 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      runAsUser: 1000
+      runAsGroup: 1000
       capabilities:
         drop:
           - ALL
