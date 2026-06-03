@@ -15,7 +15,7 @@ env:
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NAMESPACE: apps
-  FIREBASE_API_KEY: ${{ github.ref == 'refs/heads/master' && vars.PRODUCTION_FIREBASE_API_KEY || vars.STAGING_FIREBASE_API_KEY }}
+  FIREBASE_API_KEY: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_FIREBASE_API_KEY || secrets.STAGING_FIREBASE_API_KEY }}
 jobs:
   build-and-deploy:
     runs-on:
