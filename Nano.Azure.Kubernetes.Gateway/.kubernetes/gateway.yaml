@@ -9,6 +9,12 @@ metadata:
 spec:
   gatewayClassName: azure-alb-external
   listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
     - name: https
       protocol: HTTPS
       port: 443

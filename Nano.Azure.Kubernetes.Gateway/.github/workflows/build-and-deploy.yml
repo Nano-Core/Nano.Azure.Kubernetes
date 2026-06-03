@@ -46,16 +46,14 @@ jobs:
       - name: Deploy Gateway And Load Balancer
         shell: pwsh
         run: |
-          $zones = az network dns zone list -g $env:AZURE_GROUP_DNS | ConvertFrom-Json;
- 
-          $env:CERTIFICATE_DNS_NAMES = @(
-              foreach ($zone in $zones) {
-          @"
-              - $($zone.name),
-                *.$($zone.name)
-          "@
+          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query "[].name" -o json | ConvertFrom-Json
+
+          $env:CERTIFICATE_DNS_NAMES = (
+              $zoneNames | ForEach-Object {
+                  "  - $_"
+                  "  - `"*.$_`""
               }
-          ) -join "`n";
+          ) -join "`n"
 
           $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
 
@@ -125,7 +123,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-          
+
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2
