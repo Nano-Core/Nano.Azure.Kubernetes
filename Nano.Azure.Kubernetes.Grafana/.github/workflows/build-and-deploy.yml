@@ -15,23 +15,28 @@ env:
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_GROUP_DATABASE: ${{ vars.AZURE_RESOURCE_GROUP_DATABASE }} 
+  AZURE_GROUP_DNS: ${{ vars.AZURE_RESOURCE_GROUP_DNS }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
-  KUBERNETES_NAMESPACE: default
-  KUBERNETES_REPLICA_COUNT: 1
+  KUBERNETES_NAMESPACE: apps
+  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
   KUBERNETES_MEMORY_REQUEST: 384Mi
   KUBERNETES_MEMORY_LIMIT: 1152Mi 
-  KUBERNETES_CPU_REQUEST: 150m
-  KUBERNETES_CPU_LIMIT: 450m
+  KUBERNETES_CPU_REQUEST: 100m
+  KUBERNETES_CPU_LIMIT: 300m
   GRAFANA_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_GRAFANA_ADMIN_USERNAME || secrets.STAGING_GRAFANA_ADMIN_USERNAME }}
   GRAFANA_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_GRAFANA_ADMIN_PASSWORD || secrets.STAGING_GRAFANA_ADMIN_PASSWORD }}
   SQL_TYPE: mysql
   SQL_NAME: grafana
   SQL_USER: grafana-user
-  SQL_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_DATA_ADMIN_PASSWORD || secrets.STAGING_DATA_ADMIN_PASSWORD }}
+  SQL_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_SQL_ADMIN_PASSWORD || secrets.STAGING_SQL_ADMIN_PASSWORD }}
+  SUB_DOMAIN_NAME: grafana
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
     permissions:
       contents: write
       id-token: write
@@ -54,27 +59,41 @@ jobs:
         if: env.SQL_TYPE == 'mysql'
         shell: pwsh
         run: |
-          $env:SQL_HOST = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].fullyQualifiedDomainName;
-          $env:SQL_PORT = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].databasePort;
-          $env:SQL_ADMIN_USER = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].administratorLogin;
-          $env:SQL_ADMIN_CONNECTIONSTRING = "Server=$env:SQL_HOST;Port=$env:SQL_PORT;Database=mysql;Uid=$env:SQL_ADMIN_USER;Pwd=$env:SQL_ADMIN_PASSWORD;SslMode=Preferred";
+          $env:SQL_HOST = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].fullyQualifiedDomainName -o tsv;
+          $env:SQL_PORT = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].databasePort -o tsv;
+          $env:SQL_ADMIN_USER = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].administratorLogin -o tsv;
+          $env:SQL_CA_CERT = Get-Content .sql/MySql/DigiCertGlobalRootG2.crt.pem -Raw; 
 
-          apt-get update;
-          apt-get install -y mysql-client;
+          $env:MYSQL_PWD = $env:SQL_ADMIN_PASSWORD;
 
-          mysql -e "CREATE DATABASE IF NOT EXISTS grafana" $env:SQL_ADMIN_CONNECTIONSTRING ;
+          mysql `
+              --host $env:SQL_HOST `
+              --port $env:SQL_PORT `
+              --user $env:SQL_ADMIN_USER `
+              --ssl-mode=REQUIRED `
+              -e "CREATE DATABASE IF NOT EXISTS $env:SQL_NAME;";
 
-          $userExists = mysql --batch -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$env:SQL_USER');" $env:MYSQL_ADMIN_CONNECTIONSTRING;
+          $userExists = mysql `
+              --host $env:SQL_HOST `
+              --port $env:SQL_PORT `
+              --user $env:SQL_ADMIN_USER `
+              --ssl-mode=REQUIRED `
+              -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$env:SQL_USER');";
+
           if ($userExists -eq 0) 
           {
-              mysql -e " `
-                  CREATE USER '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; `
-                  GRANT SELECT, INSERT, UPDATE, DELETE ON $database.* TO '$env:SQL_USER'@'%'; `
-                  FLUSH PRIVILEGES;" `
-                  $env:SQL_ADMIN_CONNECTIONSTRING ;
+             mysql `
+                 --host $env:SQL_HOST `
+                 --port $env:SQL_PORT `
+                 --user $env:SQL_ADMIN_USER `
+                 --ssl-mode=REQUIRED `
+                 -e "CREATE USER '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; GRANT SELECT, INSERT, UPDATE, DELETE ON $env:SQL_NAME.* TO '$env:SQL_USER'@'%'; FLUSH PRIVILEGES;";
           }
 
-          $env:SQL_CA_CERT = Get-Content .sql/MySql/.certificates/DigiCertGlobalRootCA.pem -Raw;
+          echo "SQL_HOST=$env:SQL_HOST" >> $env:GITHUB_ENV;
+          echo "SQL_PORT=$env:SQL_PORT" >> $env:GITHUB_ENV;
+          echo "SQL_ADMIN_USER=$env:SQL_ADMIN_USER" >> $env:GITHUB_ENV;
+          echo "SQL_CA_CERT<<EOF`n$env:SQL_CA_CERT`nEOF" >> $env:GITHUB_ENV
 
       - name: Initialize PostgreSQL Database
         if: env.SQL_TYPE == 'postgresql'
@@ -89,39 +108,70 @@ jobs:
       - name: Deploy Grafana
         shell: pwsh
         run: |
+          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query "[].name" -o json | ConvertFrom-Json
+
+          $env:ROUTE_HOST_NAMES = (
+              $zoneNames | ForEach-Object {
+                  "  - $env:SUB_DOMAIN_NAME.$_"
+              }
+          ) -join "`n"
+
+          $env:GATEWAY_NAME = kubectl get gateway -n apps -o jsonpath='{.items[0].metadata.name}'
+          $env:SQL_CA_CERT_BASE64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($env:SQL_CA_CERT))
+
           Get-Content .kubernetes/grafana-db-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-db-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-db-auth-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/grafana-db-ca-cert-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-db-ca-cert-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-db-ca-cert-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/grafana-admin-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-admin-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-admin-auth-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/grafana-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-values.tmp.yaml;
-          Get-Content .kubernetes/grafana-httproute.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-httproute.tmp.yaml;
+          helm upgrade --install $env:APP_NAME oci://ghcr.io/grafana-community/helm-charts/grafana --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/grafana-values.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+          Get-Content .kubernetes/grafana-httproute-80.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-httproute-80.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-httproute-80.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+          Get-Content .kubernetes/grafana-httproute-443.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-httproute-443.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-httproute-443.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/grafana-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-service-monitor.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-service-monitor.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
 
-          $result = az aks command invoke `
-              -g $env:AZURE_GROUP_KUBERNETES `
-              -n $env:KUBERNETES_CLUSTER `
-              --file .kubernetes/grafana-db-auth-secret.tmp.yaml `
-              --file .kubernetes/grafana-db-ca-cert-secret.tmp.yaml `
-              --file .kubernetes/grafana-admin-auth-secret.tmp.yaml `
-              --file .kubernetes/grafana-values.tmp.yaml `
-              --file .kubernetes/grafana-httproute.tmp.yaml `
-              --file .kubernetes/grafana-service-monitor.tmp.yaml `
-              --command @"
-                  set -eu
-
-                  kubectl apply -f grafana-db-auth-secret.tmp.yaml || exit 1
-                  kubectl apply -f grafana-db-ca-cert-secret.tmp.yaml || exit 2
-                  kubectl apply -f grafana-admin-auth-secret.tmp.yaml || exit 3
-
-                  helm upgrade --install $env:APP_NAME oci://ghcr.io/grafana-community/helm-charts/grafana --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f grafana-values.tmp.yaml || exit 4
-
-                  kubectl apply -f grafana-httproute.tmp.yaml || exit 5
-                  kubectl apply -f grafana-service-monitor.tmp.yaml || exit 6
-          "@ --output json | ConvertFrom-Json;
-
-          echo $result;
-
-          if ($result.exitCode -ne 0)
-          {
+          Get-Content .kubernetes/grafana-healthcheck-policy.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-healthcheck-policy.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-healthcheck-policy.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
               throw "error";
           }
 
@@ -137,7 +187,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-
+          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

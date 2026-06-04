@@ -1,0 +1,17 @@
+apiVersion: alb.networking.azure.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: %APP_NAME%-healthcheck
+  namespace: %KUBERNETES_NAMESPACE%
+spec:
+  targetRef:
+    group: ""
+    kind: Service
+    name: %APP_NAME%
+  default:
+    interval: 10s
+    timeout: 5s
+    unhealthyThreshold: 3
+    healthyThreshold: 2
+    http:
+      path: /api/health

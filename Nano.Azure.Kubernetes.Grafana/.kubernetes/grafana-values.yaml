@@ -7,7 +7,7 @@ podDisruptionBudget:
 readinessProbe:
   httpGet:
     path: /api/health
-    port: 3000
+    port: grafana
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 5
@@ -17,7 +17,7 @@ readinessProbe:
 livenessProbe:
   httpGet:
     path: /api/health
-    port: 3000
+    port: grafana
   initialDelaySeconds: 90
   periodSeconds: 20
   timeoutSeconds: 5
@@ -40,7 +40,7 @@ containerSecurityContext:
   capabilities:
     drop:
       - ALL
-
+      
 ingress:
   enabled: false
 
@@ -75,11 +75,7 @@ topologySpreadConstraints:
         app.kubernetes.io/name: %APP_NAME%
 
 persistence:
-  enabled: true
-  type: pvc
-  accessModes:
-    - ReadWriteOnce
-  size: 5Gi
+  enabled: false
 
 admin:
   existingSecret: %APP_NAME%-admin-auth
@@ -91,28 +87,24 @@ extraVolumes:
     emptyDir: {}
   - name: var-tmp
     emptyDir: {}
-  - name: db-auth
-    secret:
-      secretName: %APP_NAME%-db-auth
-  - name: db-ca-cert
-    secret:
-      secretName: %APP_NAME%-db-ca-cert
-  - name: smtp-auth
-    secret:
-      secretName: sendgrid-auth
 
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
   - name: var-tmp
     mountPath: /var/tmp
+
+extraSecretMounts:
   - name: db-auth
+    secretName: grafana-db-auth
     mountPath: /etc/db/auth
     readOnly: true
   - name: db-ca-cert
+    secretName: grafana-db-ca-cert
     mountPath: /etc/db/certs
     readOnly: true
   - name: smtp-auth
+    secretName: sendgrid-auth
     mountPath: /etc/smtp/auth
     readOnly: true
 
@@ -135,10 +127,11 @@ grafana.ini:
     type: %SQL_TYPE%
     host: %SQL_HOST%
     port: %SQL_PORT%
-    name: grafana
+    name: %SQL_NAME%
     user: $__file{/etc/db/auth/username}
     password: $__file{/etc/db/auth/password}
-    ssl_mode: verify-full
+    isolation_level: READ-UNCOMMITTED
+    ssl_mode: skip-verify
     ca_cert_path: /etc/db/certs/ca.pem
   analytics:
     reporting_enabled: false
@@ -163,10 +156,10 @@ grafana.ini:
 sidecar:
   dashboards:
     enabled: true
-    searchNamespace: ALL
+    searchNamespace: %KUBERNETES_NAMESPACE%
 
   datasources:
     enabled: true
-    searchNamespace: ALL
+    searchNamespace: %KUBERNETES_NAMESPACE%
 
 revisionHistoryLimit: 0
