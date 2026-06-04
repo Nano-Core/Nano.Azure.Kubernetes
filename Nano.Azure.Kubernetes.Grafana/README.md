@@ -9,6 +9,7 @@
 * **[Registration](#registration)**  
   * **[High Availability](#topology-affinity)**  
   * **[Hardened Security](#hardened-security)**  
+  * **[Persistence](#persistence)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
@@ -62,6 +63,23 @@ reduce exposure to kernel-level risks.
 Grafana stores its persistent state primarily in `/var/lib/grafana`, which is backed by a PVC in Kubernetes. This includes plugins, cache, and optional embedded database data if no external 
 database is used. Configuration and provisioning are mounted separately and are not persisted. Temporary runtime data is stored in `/tmp` and `/var/tmp` using ephemeral volumes.
 
+### Persistence
+Persistence is disabled by default to support stateless deployments and safe scaling of Grafana pods without PVC multi-attach issues. All core state (users, orgs, dashboards) is stored in an 
+external database, and dashboards/datasources are provisioned via sidecars.
+
+To enable persistence.
+
+```yaml
+persistence:
+  enabled: true
+  type: pvc
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+```
+
+> ⚠️ When enabled, Grafana must run with `replicas: 1` and `autoscaling.enabled: false` to prevent PVC attachment conflicts.
+
 ### Prometheus Monitoring
 The Grafana deployemnt is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints 
 that ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
@@ -69,7 +87,15 @@ that ensure reliable scraping and consistent observability of the StatefulSet po
 > ⚠️ Azure Prometheus uses different CRDs: `azmonitoring.coreos.com/v1` instead of `monitoring.coreos.com/v1`.
 
 ### Health Probes
-The deployment configures both a readiness and liveness probe.  
+The deployment configures both readiness and liveness probes to ensure the Grafana pod is properly initialized and remains healthy during runtime.
+
+Due to Grafana sidecars, a **[`HealthCheckPolicy`](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/api-specification-kubernetes#alb.networking.azure.io/v1.HealthCheckPolicySpec)** 
+resource is required in Kubernetes. This ensures that Azure Application Gateway for Containers uses the correct health-check endpoint when performing external health checks.
+
+If the Application Gateway cannot receive a healthy response (for example, if sidecar dependencies are not responding correctly), it will mark the backend as unhealthy and stop routing 
+traffic to the Grafana service entirely.  
+
+> 📖 Learn more about **[Azure Load Balancer Health Probes](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/alb-controller-backend-health-metrics?tabs=backend-health-kubectl-access)**.
 
 ### Horizontal Pod Autoscaler
 Horizontal Pod Autoscaling (HPA) is disabled by default, as it does not provide significant value for Grafana workloads. Grafana is primarily stateless, and scaling is typically handled more 
