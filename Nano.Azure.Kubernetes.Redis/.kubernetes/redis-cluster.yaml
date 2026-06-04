@@ -1,0 +1,161 @@
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisCluster
+metadata:
+  name: %APP_NAME%
+  namespace: %KUBERNETES_NAMESPACE%
+spec:
+  clusterSize: %KUBERNETES_REPLICA_COUNT%
+  kubernetesConfig:
+    image: quay.io/opstree/redis:v%REDIS_VERSION%
+    redisSecret:
+      name: %APP_NAME%-auth
+      key: password
+    resources:
+      requests:
+        cpu: %KUBERNETES_CPU_REQUEST%
+        memory: %KUBERNETES_MEMORY_REQUEST%
+      limits:
+        cpu: %KUBERNETES_CPU_LIMIT%
+        memory: %KUBERNETES_MEMORY_LIMIT%
+  persistenceEnabled: true
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  port: 6379
+  redisConfig:
+    additionalRedisConfig: |
+      cluster-require-full-coverage no
+      cluster-node-timeout 15000
+      appendonly yes
+  redisExporter:
+    enabled: true
+    image: quay.io/opstree/redis-exporter:v%REDIS_EXPORTER_VERSION%
+    resources:
+      limits:
+        cpu: 100m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 32Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      privileged: false
+      runAsUser: 1000
+      runAsGroup: 1000
+      capabilities:
+        drop:
+          - ALL
+  redisLeader:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: %APP_NAME%
+              topologyKey: kubernetes.io/hostname
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: %APP_NAME%
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
+    nodeSelector:
+      kubernetes.io/os: linux
+      nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    resources:
+      requests:
+        cpu: %KUBERNETES_CPU_REQUEST%
+        memory: %KUBERNETES_MEMORY_REQUEST%
+      limits:
+        cpu: %KUBERNETES_CPU_LIMIT%
+        memory: %KUBERNETES_MEMORY_LIMIT%
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      privileged: false
+      runAsUser: 1000
+      runAsGroup: 1000
+      capabilities:
+        drop:
+          - ALL
+    terminationGracePeriodSeconds: 3600
+  redisFollower:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: %APP_NAME%
+              topologyKey: kubernetes.io/hostname
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: %APP_NAME%
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
+    nodeSelector:
+      kubernetes.io/os: linux
+      nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    resources:
+      requests:
+        cpu: %KUBERNETES_CPU_REQUEST%
+        memory: %KUBERNETES_MEMORY_REQUEST%
+      limits:
+        cpu: %KUBERNETES_CPU_LIMIT%
+        memory: %KUBERNETES_MEMORY_LIMIT%
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      privileged: false
+      runAsUser: 1000
+      runAsGroup: 1000
+      capabilities:
+        drop:
+          - ALL
+    terminationGracePeriodSeconds: 3600
+  resources:
+    requests:
+      cpu: %KUBERNETES_CPU_REQUEST%
+      memory: %KUBERNETES_MEMORY_REQUEST%
+    limits:
+      cpu: %KUBERNETES_CPU_LIMIT%
+      memory: %KUBERNETES_MEMORY_LIMIT%
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

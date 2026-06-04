@@ -1,0 +1,165 @@
+replicas: %KUBERNETES_REPLICA_COUNT%
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: grafana
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: grafana
+  initialDelaySeconds: 90
+  periodSeconds: 20
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+testFramework:
+  enabled: false
+
+securityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+      
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: %KUBERNETES_CPU_REQUEST%
+    memory: %KUBERNETES_MEMORY_REQUEST%
+  limits:
+    cpu: %KUBERNETES_CPU_LIMIT%
+    memory: %KUBERNETES_MEMORY_LIMIT%
+
+nodeSelector:
+  kubernetes.io/os: linux
+  nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: %APP_NAME%
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: %APP_NAME%
+
+persistence:
+  enabled: false
+
+admin:
+  existingSecret: %APP_NAME%-admin-auth
+  userKey: admin-username
+  passwordKey: admin-password
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+  - name: var-tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: var-tmp
+    mountPath: /var/tmp
+
+extraSecretMounts:
+  - name: db-auth
+    secretName: grafana-db-auth
+    mountPath: /etc/db/auth
+    readOnly: true
+  - name: db-ca-cert
+    secretName: grafana-db-ca-cert
+    mountPath: /etc/db/certs
+    readOnly: true
+  - name: smtp-auth
+    secretName: sendgrid-auth
+    mountPath: /etc/smtp/auth
+    readOnly: true
+
+grafana.ini:
+  server:
+    root_url: "%(protocol)s://%(domain)s/"
+    protocol: http
+    enable_gzip: true
+    serve_from_sub_path: false
+  security:
+    disable_initial_admin_creation: false
+    cookie_secure: true
+    cookie_samesite: strict
+    strict_transport_security: true
+    strict_transport_security_max_age_seconds: 31536000
+    strict_transport_security_preload: true
+    x_content_type_options: true
+    x_xss_protection: true
+  database:
+    type: %SQL_TYPE%
+    host: %SQL_HOST%
+    port: %SQL_PORT%
+    name: %SQL_NAME%
+    user: $__file{/etc/db/auth/username}
+    password: $__file{/etc/db/auth/password}
+    isolation_level: READ-UNCOMMITTED
+    ssl_mode: skip-verify
+    ca_cert_path: /etc/db/certs/ca.pem
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+    check_for_plugin_updates: false
+  log:
+    mode: console
+  users:
+    viewers_can_edit: false
+    allow_sign_up: false
+  auth.anonymous:
+    enabled: false
+  smtp:
+    enabled: true
+    skip_verify: false
+    host: $__file{/etc/smtp/auth/host}
+    from_name: $__file{/etc/smtp/auth/sender-name}
+    from_address: $__file{/etc/smtp/auth/sender-email}
+    user: $__file{/etc/smtp/auth/username}
+    password: $__file{/etc/smtp/auth/apikey}
+
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: %KUBERNETES_NAMESPACE%
+
+  datasources:
+    enabled: true
+    searchNamespace: %KUBERNETES_NAMESPACE%
+
+revisionHistoryLimit: 0

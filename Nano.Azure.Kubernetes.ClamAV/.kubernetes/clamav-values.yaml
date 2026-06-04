@@ -1,0 +1,109 @@
+nodeSelector:
+  kubernetes.io/os: linux
+  nodepool.compute: %KUBERNETES_NODEPOOL_COMPUTE%
+
+replicaCount: %KUBERNETES_REPLICA_COUNT%
+
+podSecurityContext:
+  runAsUser: 100
+  runAsGroup: 101
+  fsGroup: 101
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: %KUBERNETES_CPU_REQUEST%
+    memory: %KUBERNETES_MEMORY_REQUEST%
+  limits:
+    cpu: %KUBERNETES_CPU_LIMIT%
+    memory: %KUBERNETES_MEMORY_LIMIT%
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: %APP_NAME%
+          topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: %APP_NAME%
+
+startupProbe:
+  enabled: true  
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 300
+  periodSeconds: 20
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 90
+  periodSeconds: 30
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+hpa:
+  enabled: true
+  minReplicas: %KUBERNETES_REPLICA_MIN_COUNT%
+  maxReplicas: %KUBERNETES_REPLICA_MAX_COUNT%
+  cpu: %KUBERNETES_CPU_UTILIZATION%
+  memory: %KUBERNETES_MEMORY_UTILIZATION%
+
+metrics:
+  enabled: true
+  path: /metrics
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 50m
+      memory: 32Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+persistentVolume:
+  enabled: true
+  size: 100Mi

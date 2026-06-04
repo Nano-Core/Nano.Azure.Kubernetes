@@ -1,0 +1,106 @@
+name: Build and Deploy
+on:
+  pull_request:
+    branches:
+      - master 
+  push:
+    branches:
+      - master 
+env:
+  APP_NAME: redis
+  VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
+  REDIS_VERSION: 8.6.1
+  REDIS_EXPORTER_VERSION: 1.83.0
+  CHART_VERSION: 0.24.0
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
+  AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  KUBERNETES_NODEPOOL_COMPUTE: cpu
+  KUBERNETES_NAMESPACE: apps
+  KUBERNETES_REPLICA_COUNT: 3
+  KUBERNETES_MEMORY_REQUEST: 512Mi
+  KUBERNETES_MEMORY_LIMIT: 1572Mi
+  KUBERNETES_CPU_REQUEST: 100m
+  KUBERNETES_CPU_LIMIT: 300m
+  REDIS_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_REDIS_PASSWORD || secrets.STAGING_REDIS_PASSWORD }}
+jobs:
+  build-and-deploy:
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: ${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure Login
+        shell: pwsh
+        run: |
+          az login --service-principal -u $env:AZURE_CLIENT_ID -p $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID -o none;
+          az account set -s $env:AZURE_SUBSCRIPTION_ID -o none;
+
+          $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
+          az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
+
+      - name: Deploy Redis Cluster
+        shell: pwsh
+        run: |
+          helm repo add ot-helm https://ot-container-kit.github.io/helm-charts;
+          helm repo update;
+
+          Get-Content .kubernetes/redis-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/redis-auth-secret.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+          Get-Content .kubernetes/redis-operator-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-operator-values.tmp.yaml;
+          helm upgrade $env:APP_NAME ot-helm/redis-operator --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/redis-operator-values.tmp.yaml --wait --timeout 10m;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+          Get-Content .kubernetes/redis-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-cluster.tmp.yaml;
+          kubectl apply -f .kubernetes/redis-cluster.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+          Get-Content .kubernetes/redis-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-service-monitor.tmp.yaml;
+          kubectl apply -f .kubernetes/redis-service-monitor.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.VERSION }}
+          name: "Release ${{ env.VERSION }}"
+          body: |
+            Version: ${{ env.VERSION }}
+            Commit: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
+          
+      - name: Slack Notification
+        if: always()
+        uses: act10ns/slack@v2
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          config: .github/config/slack.yml
+          status: ${{ job.status }}
+          channel: ${{ vars.SLACK_CHANNEL }}
