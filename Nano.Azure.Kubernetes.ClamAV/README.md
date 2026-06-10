@@ -78,10 +78,6 @@ This ensures all ClamAV instances operate with up-to-date threat intelligence wh
 Overall, the deployment provides fully automated virus definition updates with no manual intervention required, ensuring continuous protection and consistent scanning capability across 
 all replicas.
 
-
-
-
-
 ### High Availability
 The ClamAV deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 
 resilience and reduces the risk of multiple instances being impacted by a single node failure. The topology spread configuration also helps balance pod placement across the cluster while 
@@ -124,7 +120,7 @@ kubectl dscribe hpa $env:APP_NAME -n $env:KUBERNETES_NAMESPACE;
 ## Dependencies
 ClamAV has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
+| Dependency                                                                                                                                                | Description                                  | 
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                      | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.GitHubRunner/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |

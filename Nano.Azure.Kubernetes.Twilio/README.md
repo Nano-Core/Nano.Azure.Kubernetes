@@ -28,7 +28,7 @@ Before running the GitHub Action, add the following GitHub organization vars and
 | `{{environment}}_TWILIO_API_KEY` | secrets | Twilio API key.   |
 
 ## Dependencies
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
+| Dependency                                                                                                                                                | Description                                  | 
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                      | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.GitHubRunner/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |
