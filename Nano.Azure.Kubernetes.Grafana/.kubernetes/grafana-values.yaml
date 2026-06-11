@@ -119,7 +119,7 @@ grafana.ini:
     cookie_secure: true
     cookie_samesite: strict
     strict_transport_security: true
-    strict_transport_security_max_age_seconds: 31536000
+    strict_transport_security_max_age_seconds: 15768000
     strict_transport_security_preload: true
     x_content_type_options: true
     x_xss_protection: true
