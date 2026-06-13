@@ -65,7 +65,6 @@ jobs:
           draft: false
           prerelease: false
 
-          
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2
