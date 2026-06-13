@@ -17,7 +17,7 @@ env:
   AZURE_GROUP_DNS: ${{ vars.AZURE_RESOURCE_GROUP_DNS }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
-  KUBERNETES_NAMESPACE: apps
+  KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
   CERTIFICATE_ORGANIZATION: Nano-Core
 jobs:
   build-and-deploy:
@@ -43,6 +43,8 @@ jobs:
           $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
           az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
 
+          echo "KUBERNETES_CLUSTER=$env:KUBERNETES_CLUSTER" >> $env:GITHUB_ENV;
+
       - name: Deploy Gateway And Load Balancer
         shell: pwsh
         run: |
@@ -54,8 +56,6 @@ jobs:
                   "  - `"*.$_`""
               }
           ) -join "`n"
-
-          $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
 
           Get-Content .kubernetes/gateway.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/gateway.tmp.yaml;
           kubectl apply -f .kubernetes/gateway.tmp.yaml;
@@ -120,6 +120,7 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false

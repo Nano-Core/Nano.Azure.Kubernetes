@@ -29,6 +29,7 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: ${{ contains(env.VERSION, '-') }}

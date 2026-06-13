@@ -16,7 +16,7 @@ env:
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: gpu
-  KUBERNETES_NAMESPACE: apps
+  KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
   KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
   KUBERNETES_MEMORY_REQUEST: 1536Mi
   KUBERNETES_MEMORY_LIMIT: 4608Mi
@@ -77,6 +77,7 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
