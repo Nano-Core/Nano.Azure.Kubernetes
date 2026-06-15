@@ -2,8 +2,6 @@
 
 > _The public gateway exposing Nano applications externally._
 
-> ⚠️ This setup relies on features available in `aks-preview`.
-
 ***
 
 ## Table of Contents
@@ -20,6 +18,8 @@ such as `GatewayClass`, `Gateway`, and `HTTPRoute`, providing a more flexible an
 splitting, and multi-protocol workloads.  
 
 > 📖 Learn more about **[Kubernetes API Gateway](https://kubernetes.io/docs/concepts/services-networking/gateway/)** and check out the source on [GitHub Gateway Repository](https://github.com/kubernetes-sigs/gateway-api).  
+
+> ⚠️ This setup currently relies on features available in `aks-preview`.
 
 ## Registration
 This deployment provisions an API Gateway and load balancer in Kubernetes, and also creates a TLS certificate.  
