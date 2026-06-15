@@ -71,6 +71,13 @@ jobs:
               throw "error";
           }
 
+          Get-Content .kubernetes/frontend-tls-policy.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/frontend-tls-policy.tmp.yaml;
+          kubectl apply -f .kubernetes/frontend-tls-policy.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+          
       - name: Create DNS CNAME Records
         shell: pwsh
         run: |
