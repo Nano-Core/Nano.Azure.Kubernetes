@@ -22,16 +22,6 @@ env:
   GITHUBRUNNER_INSTALLATION_ID: ${{ secrets.GITHUBRUNNER_INSTALLATION_ID }}
 jobs:
   build-and-deploy:
-    runs-on:
-      - self-hosted
-      - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
-    permissions:
-      contents: write
-      id-token: write
-    concurrency:
-      group: ${{ github.repository }}-${{ matrix.environment }}
-      cancel-in-progress: true
     strategy:
       matrix:
         environment:
@@ -39,6 +29,16 @@ jobs:
           - Production
     env:
       AZURE_SUBSCRIPTION_ID: ${{ matrix.environment == 'Production' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+    runs-on:
+      - self-hosted
+      - linux 
+      - ${{ github.ref == matrix.environment == 'Production' && 'Production' || 'Staging' }}
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: ${{ github.repository }}-${{ matrix.environment }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v6
 
