@@ -6,14 +6,14 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
-securityContext:
+podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 2000
   seccompProfile:
     type: RuntimeDefault
-containerSecurityContext:
+securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
   privileged: false

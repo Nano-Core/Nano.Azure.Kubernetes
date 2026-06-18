@@ -45,6 +45,7 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      readOnlyRootFilesystem: true
       runAsUser: 1000
       runAsGroup: 1000
       capabilities:
@@ -93,6 +94,7 @@ spec:
       privileged: false
       runAsUser: 1000
       runAsGroup: 1000
+      readOnlyRootFilesystem: true
       capabilities:
         drop:
           - ALL
@@ -140,6 +142,7 @@ spec:
       privileged: false
       runAsUser: 1000
       runAsGroup: 1000
+      readOnlyRootFilesystem: true
       capabilities:
         drop:
           - ALL

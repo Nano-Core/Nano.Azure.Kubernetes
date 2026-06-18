@@ -154,10 +154,24 @@ grafana.ini:
     password: $__file{/etc/smtp/auth/apikey}
 
 sidecar:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi 
+    limits:
+      cpu: 75m
+      memory: 96Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop:
+        - ALL
   dashboards:
     enabled: true
     searchNamespace: %KUBERNETES_NAMESPACE%
-
   datasources:
     enabled: true
     searchNamespace: %KUBERNETES_NAMESPACE%

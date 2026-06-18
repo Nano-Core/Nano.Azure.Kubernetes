@@ -16,6 +16,7 @@ securityContext:
   allowPrivilegeEscalation: false
   runAsNonRoot: true
   privileged: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
       - ALL
