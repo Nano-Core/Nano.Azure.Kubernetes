@@ -24,6 +24,9 @@ securityContext:
     drop:
       - ALL
 
+serviceAccount:
+  automountServiceAccountToken: false
+
 resources:
   requests:
     cpu: %KUBERNETES_CPU_REQUEST%
@@ -102,6 +105,7 @@ metrics:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
     privileged: false
+    readOnlyRootFilesystem: true
     capabilities:
       drop:
         - ALL

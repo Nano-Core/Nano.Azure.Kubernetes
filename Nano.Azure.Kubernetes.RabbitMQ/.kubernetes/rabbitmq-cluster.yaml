@@ -49,8 +49,9 @@ spec:
               fsGroupChangePolicy: OnRootMismatch
               seccompProfile:
                 type: RuntimeDefault
+            automountServiceAccountToken: false
             containers:
-              - name: rabbitmq
+              - name: %APP_NAME%
                 securityContext:
                   privileged: false
                   runAsUser: 999
