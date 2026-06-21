@@ -12,6 +12,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Service Account Token](#service-account-token)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -88,6 +89,11 @@ For this reason, the Redis Operator does not support Kubernetes HPA for `RedisCl
 
 Instead, scaling is performed explicitly by updating the `clusterSize` field in the `RedisCluster` specification. The operator then handles the full lifecycle of the change, including 
 provisioning new pods, joining them to the cluster, and redistributing hash slots to ensure even data distribution and cluster health.  
+
+### Service Account Token
+Redis Operator requires access to the Kubernetes API and therefore cannot have auto-mounting of the Service Account token disabled.
+
+⚠️ The chart does not support manually mounting the Service Account token as a projected volume, leaving auto-mounting as the only option.
 
 ## Dependencies
 Redis has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

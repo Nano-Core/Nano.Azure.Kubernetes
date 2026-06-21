@@ -1,5 +1,8 @@
 replicaCount: %KUBERNETES_REPLICA_COUNT%
 
+image:
+  repository: docker.io/ollama/ollama
+
 ollama:
   port: 11434
   gpu:
@@ -12,6 +15,12 @@ ollama:
     pull: []
     run: []
     clean: true
+
+serviceAccount:
+  create: true
+  automount: false
+
+automountServiceAccountToken: false
 
 podSecurityContext:
   runAsNonRoot: true

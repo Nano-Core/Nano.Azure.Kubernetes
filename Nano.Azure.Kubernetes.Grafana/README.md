@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Service Account Token](#service-account-token)**  
   * **[Grafana Sidecars](#grafana-sidecars)**  
   * **[SMTP Configuration](#smtp-configuration)**  
 * **[Dependencies](#dependencies)**  
@@ -113,6 +114,12 @@ autoscaling:
   targetCPU: 180
   targetMemory: 180
 ```
+
+### Service Account Token
+Grafana requires access to the Kubernetes API.  
+
+The Service Account token is explicitly mounted as a projected volume instead of relying on Kubernetes' default auto-mounting behaviour. Auto-mounting is disabled at both the 
+ServiceAccount and pod level (`automountServiceAccountToken: false`), and the token is manually mapped into the container at the standard path (`/var/run/secrets/kubernetes.io/serviceaccount`). 
 
 ### Grafana Sidecars
 The Grafana sidecars automatically discover and load configuration from Kubernetes ConfigMaps and Secrets without requiring a Grafana restart.

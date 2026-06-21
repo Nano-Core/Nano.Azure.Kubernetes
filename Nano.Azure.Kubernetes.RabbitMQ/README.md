@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Service Account Token](#service-account-token)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -95,6 +96,11 @@ leader re-election during startup or failover scenarios.
 A Horizontal Pod Autoscaler (HPA) is intentionally not configured for the RabbitMQ cluster. RabbitMQ is a stateful clustered service, and automatic scaling of broker nodes can cause 
 unnecessary queue rebalancing, leader re-election, and temporary instability. To ensure predictable performance and stable quorum behavior, the cluster uses a fixed replica count. Scaling 
 should instead be handled at the application or consumer level, where stateless workloads can safely scale horizontally.  
+
+### Service Account Token
+RabbitMQ does not require access to the Kubernetes API.  
+
+Auto-mounting of the Service Account token has been disabled.
 
 ## Dependencies
 RabbitMQ has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

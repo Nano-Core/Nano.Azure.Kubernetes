@@ -10,6 +10,7 @@
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
+  * **[Service Account Token](#service-account-token)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -85,6 +86,12 @@ The Cert-Manager Helm chart includes default readiness and liveness probes to en
 the default probe configuration to improve stability and reduce the likelihood of unnecessary restarts during startup and normal operation.
 
 These probes help Kubernetes manage pod lifecycle events, automatically restarting unhealthy instances and preventing traffic from being routed to unready pods.  
+
+### Service Account Token
+Cert-Manager requires access to the Kubernetes API.  
+
+The Service Account token is explicitly mounted as a projected volume instead of relying on Kubernetes' default auto-mounting behaviour. Auto-mounting is disabled at both the 
+ServiceAccount and pod level (`automountServiceAccountToken: false`), and the token is manually mapped into the container at the standard path (`/var/run/secrets/kubernetes.io/serviceaccount`). 
 
 ## Dependencies
 Cert-Manager has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

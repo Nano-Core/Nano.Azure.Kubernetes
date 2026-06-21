@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Service Account Token](#service-account-token)**  
   * **[GPU Nodepool](#gpu-nodepool)**  
 * **[Dependencies](#dependencies)**  
 
@@ -83,6 +84,11 @@ autoscaling:
   targetCPUUtilizationPercentage: 180
   targetMemoryUtilizationPercentage: 180
 ````
+
+### Service Account Token
+Ollama does not require access to the Kubernetes API.  
+
+Auto-mounting of the Service Account token has been disabled.
 
 ### GPU Nodepool
 This deployment requires a pre-provisioned GPU node pool in the Kubernetes cluster, as workloads are intended to run on GPU-enabled nodes for hardware-accelerated inference.

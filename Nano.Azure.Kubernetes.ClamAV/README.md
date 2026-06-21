@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Service Account Token](#service-account-token)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -116,6 +117,11 @@ To inspect the currently allocated resources or review the HPA configuration, us
 ```powershell
 kubectl dscribe hpa $env:APP_NAME -n $env:KUBERNETES_NAMESPACE;
 ```
+
+### Service Account Token
+ClamAV does not require access to the Kubernetes API.  
+
+Auto-mounting of the Service Account token has been disabled.
 
 ## Dependencies
 ClamAV has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
