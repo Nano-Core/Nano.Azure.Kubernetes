@@ -30,10 +30,11 @@ securityContext:
 
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
     - ALL
-  readOnlyRootFilesystem: true
 
 volumes:
   - name: serviceaccount-token
@@ -99,10 +100,11 @@ webhook:
       type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
     capabilities:
       drop:
       - ALL
-    readOnlyRootFilesystem: true
   livenessProbe:
     enabled: true
     initialDelaySeconds: 30
@@ -176,10 +178,11 @@ cainjector:
       type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
     capabilities:
       drop:
       - ALL
-    readOnlyRootFilesystem: true
   serviceAccount:
     automountServiceAccountToken: false
   automountServiceAccountToken: false

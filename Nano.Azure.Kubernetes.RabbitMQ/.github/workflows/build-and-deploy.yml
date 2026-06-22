@@ -21,6 +21,7 @@ env:
   KUBERNETES_MEMORY_LIMIT: 1152Mi 
   KUBERNETES_CPU_REQUEST: 100m
   KUBERNETES_CPU_LIMIT: 300m
+  RABBITMQ_OPERATOR_VERSION: v2.21.1
   RABBITMQ_IMAGE_TAG: 4.2.6-management
   RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ADMIN_USERNAME || secrets.STAGING_RABBITMQ_ADMIN_USERNAME }}
   RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || secrets.STAGING_RABBITMQ_ADMIN_PASSWORD }}
@@ -51,7 +52,7 @@ jobs:
       - name: Deploy RabbitMQ
         shell: pwsh
         run: |
-          kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml;
+          kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/download/$env:RABBITMQ_OPERATOR_VERSION/cluster-operator.yml;
 
           Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
           kubectl apply -f .kubernetes/rabbitmq-cluster.tmp.yaml;

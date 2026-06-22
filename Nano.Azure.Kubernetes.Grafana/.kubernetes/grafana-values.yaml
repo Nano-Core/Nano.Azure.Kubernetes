@@ -93,6 +93,8 @@ extraVolumes:
     emptyDir: {}
   - name: var-tmp
     emptyDir: {}
+
+extraContainerVolumes:
   - name: serviceaccount-token
     projected:
       defaultMode: 0444
@@ -184,10 +186,10 @@ sidecar:
   resources:
     requests:
       cpu: 25m
-      memory: 32Mi 
+      memory: 96Mi 
     limits:
       cpu: 75m
-      memory: 96Mi
+      memory: 288Mi
   securityContext:
     allowPrivilegeEscalation: false
     privileged: false
@@ -210,4 +212,5 @@ sidecar:
       - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
         name: serviceaccount-token
         readOnly: true
+
 revisionHistoryLimit: 0

@@ -24,6 +24,9 @@ tolerance, and ability to handle large volumes of messages efficiently.
 
 > 📖 Learn more about **[RabbitMQ Cluster Operator](https://www.rabbitmq.com/kubernetes/operator/operator-overview)**.
 
+The RabbitMQ Cluster operator releases and version can be found here: **[Cluster Operator Releases](https://github.com/rabbitmq/cluster-operator/releases)**, and the RabbitMQ image version can 
+be found here: **[Image Versions](https://hub.docker.com/_/rabbitmq)**.  
+
 ## Registration
 This deployment provisions a RabbitMQ cluster in Kubernetes.  
 
