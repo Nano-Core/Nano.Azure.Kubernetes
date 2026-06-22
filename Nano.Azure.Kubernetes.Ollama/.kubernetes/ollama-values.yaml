@@ -6,7 +6,7 @@ image:
 ollama:
   port: 11434
   gpu:
-    enabled: true
+    enabled: %GPU_ENABLED%
     draEnabled: false
     draDriverClass: "gpu.nvidia.com"
     type: 'nvidia'
@@ -24,7 +24,6 @@ automountServiceAccountToken: false
 
 podSecurityContext:
   runAsNonRoot: true
-  fsGroup: 2000
   seccompProfile:
     type: RuntimeDefault
 
@@ -32,11 +31,18 @@ securityContext:
   allowPrivilegeEscalation: false
   privileged: false
   readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 1000
+  runAsNonRoot: false
   capabilities:
     drop:
       - ALL
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
 
 service:
   type: ClusterIP

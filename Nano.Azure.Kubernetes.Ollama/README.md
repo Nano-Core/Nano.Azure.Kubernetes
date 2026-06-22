@@ -52,8 +52,10 @@ pods across the cluster whenever possible.
 The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
 capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
 
-The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
-reduce exposure to kernel-level risks.  
+The container runs with as root user. Unfortunately there are currently no way to configure `runAsNonRoot: true`. A **[Feature Request](https://github.com/ollama/ollama/issues/5986)** for 
+Ollama has been created on GitHub.
+
+A runtime-default seccomp profile is applied to restrict system calls and further reduce exposure to kernel-level risks.  
 
 ### Prometheus Monitoring
 Ollama is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 

@@ -50,6 +50,8 @@ jobs:
       - name: Deploy Ollama
         shell: pwsh
         run: |
+          $env:GPU_ENABLED = if ($env:KUBERNETES_NODEPOOL_COMPUTE -eq "gpu") { "true" } else { "false" }
+
           helm repo add otwld https://helm.otwld.com;
           helm repo update;
 
