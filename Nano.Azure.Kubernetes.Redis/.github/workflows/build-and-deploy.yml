@@ -82,6 +82,24 @@ jobs:
               throw "error";
           }
 
+      - name: Update Azure Policies
+        shell: pwsh
+        run: |
+          $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value" -o json | ConvertFrom-Json | Where-Object { $_ -ne "-1" });
+
+          $ports = @("6379","9121");
+          $missingPorts = $ports | Where-Object { $currentPorts -notcontains $_ };
+
+          if ($missingPorts.Count -gt 0) {
+              $mergedPorts = ($currentPorts + $missingPorts) | Select-Object -Unique;
+              $mergedPortsJson = $mergedPorts | ConvertTo-Json -Compress;
+
+              az policy assignment update `
+                  -n SecurityCenterBuiltIn `
+                  --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
+                  --params "{`"allowedservicePortsInKubernetesClusterPorts`":{`"value`":$mergedPortsJson}}";
+          }
+
       - name: GitHub Release
         if: github.ref == 'refs/heads/master'
         uses: ncipollo/release-action@v1
@@ -95,7 +113,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-          
+
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2
