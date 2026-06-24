@@ -126,6 +126,20 @@ jobs:
               }
           }
 
+      - name: Update allowed Kubernetes service ports
+        shell: pwsh
+        run: |
+          $current = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value" -o json | ConvertFrom-Json | Where-Object { $_ -ne "-1" });
+
+          $new = @("5672","15672","15692","4369","25672");
+          $merged = ($current + $new) | Select-Object -Unique;
+          $mergedJson = $merged | ConvertTo-Json -Compress;
+
+          az policy assignment update `
+            -n SecurityCenterBuiltIn `
+            --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
+            --params "{`"allowedservicePortsInKubernetesClusterPorts`":{`"value`":$mergedJson}}";
+
       - name: GitHub Release
         if: github.ref == 'refs/heads/master'
         uses: ncipollo/release-action@v1
