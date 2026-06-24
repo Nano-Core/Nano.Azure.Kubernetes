@@ -129,10 +129,16 @@ The Grafana sidecars automatically discover and load configuration from Kubernet
 | dashboards    | Automatically imports dashboards from ConfigMaps.             |
 | datasources   | Automatically imports datasources from ConfigMaps/Secrets.    |
 
-With `searchNamespace: ALL`, Grafana can watch the entire cluster for matching resources. This enables a “dashboards and datasources as code” approach, which is commonly used in GitOps-based 
-Kubernetes environments.
+With `searchNamespace: %KUBERNETES_NAMESPACE%`, Grafana can watch the entire namespace for matching resources. This enables a “dashboards and datasources as code” approach, which is commonly 
+used in GitOps-based Kubernetes environments.
 
 > ⚠️ Dashboards and datasources are not included by default and must be created via ConfigMaps or Secrets. Sidecars only handle discovery and syncing, not provisioning.  
+
+To enable sidecars simply toogle the `enabled: true` for `dashboards` and/or `datasources`.
+
+> ⚠️ Enabling sidecars requires automounting service account tokens, which may be flagged by Microsoft Defender for Cloud.
+
+
 
 ### SMTP Configuration
 Grafana is configured with SMTP integration for sending emails such as password resets, alert notifications, and other system-generated messages. SMTP settings are provided via a Kubernetes 

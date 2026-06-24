@@ -119,9 +119,6 @@ extraVolumeMounts:
     mountPath: /tmp
   - name: var-tmp
     mountPath: /var/tmp
-  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-    name: serviceaccount-token
-    readOnly: true
 
 extraSecretMounts:
   - name: db-auth
@@ -199,14 +196,14 @@ sidecar:
       drop:
         - ALL
   dashboards:
-    enabled: true
+    enabled: false
     searchNamespace: %KUBERNETES_NAMESPACE%
     extraMounts:
       - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
         name: serviceaccount-token
         readOnly: true
   datasources:
-    enabled: true
+    enabled: false
     searchNamespace: %KUBERNETES_NAMESPACE%
     extraMounts:
       - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
