@@ -126,19 +126,23 @@ jobs:
               }
           }
 
-      - name: Update allowed Kubernetes service ports
+      - name: Update Azure Policies
         shell: pwsh
         run: |
-          $current = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value" -o json | ConvertFrom-Json | Where-Object { $_ -ne "-1" });
+          $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value" -o json | ConvertFrom-Json | Where-Object { $_ -ne "-1" });
 
-          $new = @("5672","15672","15692","4369","25672");
-          $merged = ($current + $new) | Select-Object -Unique;
-          $mergedJson = $merged | ConvertTo-Json -Compress;
+          $ports = @("443","9402");
+          $missingPorts = $ports | Where-Object { $currentPorts -notcontains $_ };
 
-          az policy assignment update `
-            -n SecurityCenterBuiltIn `
-            --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
-            --params "{`"allowedservicePortsInKubernetesClusterPorts`":{`"value`":$mergedJson}}";
+          if ($missingPorts.Count -gt 0) {
+              $mergedPorts = ($currentPorts + $missingPorts) | Select-Object -Unique;
+              $mergedPortsJson = $mergedPorts | ConvertTo-Json -Compress;
+
+              az policy assignment update `
+                  -n SecurityCenterBuiltIn `
+                  --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
+                  --params "{`"allowedservicePortsInKubernetesClusterPorts`":{`"value`":$mergedPortsJson}}";
+          }
 
       - name: GitHub Release
         if: github.ref == 'refs/heads/master'
