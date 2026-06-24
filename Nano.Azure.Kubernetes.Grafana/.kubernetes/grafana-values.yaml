@@ -6,6 +6,9 @@ automountServiceAccountToken: false
 
 replicas: %KUBERNETES_REPLICA_COUNT%
 
+service:
+  port: 8080
+
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
