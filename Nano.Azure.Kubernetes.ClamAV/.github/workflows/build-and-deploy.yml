@@ -2,10 +2,10 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
 env:
   APP_NAME: clamav
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -14,12 +14,12 @@ env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
-  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_REPLICA_MIN_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
-  KUBERNETES_REPLICA_MAX_COUNT: ${{ github.ref == 'refs/heads/master' && 6 || 3 }}  
+  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/main' && 3 || 2 }}  
+  KUBERNETES_REPLICA_MIN_COUNT: ${{ github.ref == 'refs/heads/main' && 3 || 2 }}  
+  KUBERNETES_REPLICA_MAX_COUNT: ${{ github.ref == 'refs/heads/main' && 6 || 3 }}  
   KUBERNETES_MEMORY_REQUEST: 1024Mi
   KUBERNETES_MEMORY_LIMIT: 3072Mi
   KUBERNETES_MEMORY_UTILIZATION: 180
@@ -31,7 +31,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
     concurrency:
@@ -88,7 +88,7 @@ jobs:
           }
 
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}

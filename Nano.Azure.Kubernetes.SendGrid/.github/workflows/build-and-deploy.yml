@@ -2,10 +2,10 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
 env:
   APP_NAME: sendgrid
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -13,11 +13,11 @@ env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
   SENDGRID_HOST: ${{ secrets.SENDGRID_HOST }}
   SENDGRID_USERNAME: ${{ secrets.SENDGRID_USERNAME }}
-  SENDGRID_API_KEY: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_SENDGRID_API_KEY || secrets.STAGING_SENDGRID_API_KEY }}
+  SENDGRID_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_SENDGRID_API_KEY || secrets.STAGING_SENDGRID_API_KEY }}
   SENDGRID_SENDER_NAME: ${{ vars.SENDGRID_SENDER_NAME }}
   SENDGRID_SENDER_EMAIL: ${{ vars.SENDGRID_SENDER_EMAIL }}
 jobs:
@@ -25,7 +25,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
     concurrency:
@@ -55,7 +55,7 @@ jobs:
           }
 
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}

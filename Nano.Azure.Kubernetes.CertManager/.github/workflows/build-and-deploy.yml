@@ -2,10 +2,10 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
 env:
   APP_NAME: cert-manager
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -15,7 +15,7 @@ env:
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }}
   AZURE_GROUP_DNS: ${{ vars.AZURE_RESOURCE_GROUP_DNS }}
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
   KUBERNETES_REPLICA_COUNT: 2
@@ -29,7 +29,7 @@ jobs:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
     concurrency:
@@ -145,7 +145,7 @@ jobs:
           }
 
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}

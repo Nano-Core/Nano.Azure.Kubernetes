@@ -2,10 +2,10 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
 env:
   APP_NAME: rabbitmq
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -13,25 +13,25 @@ env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
   KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
-  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
+  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/main' && 3 || 2 }}  
   KUBERNETES_MEMORY_REQUEST: 384Mi
   KUBERNETES_MEMORY_LIMIT: 1152Mi 
   KUBERNETES_CPU_REQUEST: 100m
   KUBERNETES_CPU_LIMIT: 300m
   RABBITMQ_OPERATOR_VERSION: v2.21.1
   RABBITMQ_IMAGE_TAG: 4.2.6-management
-  RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ADMIN_USERNAME || secrets.STAGING_RABBITMQ_ADMIN_USERNAME }}
-  RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || secrets.STAGING_RABBITMQ_ADMIN_PASSWORD }}
-  RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ERLANG_COOKIE || secrets.STAGING_RABBITMQ_ERLANG_COOKIE }}
+  RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_RABBITMQ_ADMIN_USERNAME || secrets.STAGING_RABBITMQ_ADMIN_USERNAME }}
+  RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || secrets.STAGING_RABBITMQ_ADMIN_PASSWORD }}
+  RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_RABBITMQ_ERLANG_COOKIE || secrets.STAGING_RABBITMQ_ERLANG_COOKIE }}
 jobs:
   build-and-deploy:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
     concurrency:
@@ -101,7 +101,7 @@ jobs:
           }
 
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}
