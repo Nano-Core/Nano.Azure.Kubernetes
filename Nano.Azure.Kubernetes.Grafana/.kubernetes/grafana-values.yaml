@@ -1,5 +1,5 @@
 serviceAccount:
-  create: true
+  create: false
   automountServiceAccountToken: false
 
 automountServiceAccountToken: false
@@ -97,26 +97,6 @@ extraVolumes:
   - name: var-tmp
     emptyDir: {}
 
-extraContainerVolumes:
-  - name: serviceaccount-token
-    projected:
-      defaultMode: 0444
-      sources:
-        - serviceAccountToken:
-            expirationSeconds: 3607
-            path: token
-        - configMap:
-            name: kube-root-ca.crt
-            items:
-              - key: ca.crt
-                path: ca.crt
-        - downwardAPI:
-            items:
-              - path: namespace
-                fieldRef:
-                  apiVersion: v1
-                  fieldPath: metadata.namespace
-
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
@@ -201,16 +181,8 @@ sidecar:
   dashboards:
     enabled: false
     searchNamespace: %KUBERNETES_NAMESPACE%
-    extraMounts:
-      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-        name: serviceaccount-token
-        readOnly: true
   datasources:
     enabled: false
     searchNamespace: %KUBERNETES_NAMESPACE%
-    extraMounts:
-      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-        name: serviceaccount-token
-        readOnly: true
 
 revisionHistoryLimit: 0

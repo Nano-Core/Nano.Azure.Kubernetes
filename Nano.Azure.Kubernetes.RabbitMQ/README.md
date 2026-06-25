@@ -1,6 +1,6 @@
 # Nano.Azure.Kubernetes.RabbitMQ
 
-> _RabbitMQ cluster for Nano applications providing reliable messaging._
+> _RabbitMQ cluster for Nano applications providing reliable messaging queueing._
 
 ***
 
@@ -13,7 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
-  * **[Service Account Token](#service-account-token)**  
+  * **[Azure Policy](#azure-policy)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -63,8 +63,6 @@ To see the available configuration options for the deployment, use the following
 
 ```powershell
 kubectl explain rabbitmqcluster;
-
-kubectl explain rabbitmqcluster.{{group}};
 ```
 
 ### High Availability
@@ -85,6 +83,19 @@ capabilities are dropped to minimize the attack surface, and the filesystem is s
 The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
 
+RabbitMQ Operator requires access to the Kubernetes API and therefore cannot have auto-mounting of the Service Account token disabled. 
+
+| Hardened Security             | Value | Description                                                                                                                            |
+| ----------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                                                                                                     |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.                                                                                                 |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.                                                                                           |
+| ReadOnly Root Filesystem      | (✔️)  | Root filesystem is mounted read-only. The Operator's `setup-container` uses `readOnlyRootFilesystem: false` and it cannot be changed.  |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.                                                                                         |
+| Automount SA Token Disabled   | ✖️    | Service Account token auto-mounting is enabled, but the Operator reverts that during reconsiliation.                                   |
+
+> ⚠️ Currently, the `automountServiceAccountToken: false` is ignored. RabbitMQ Operator overrides this setting and does not allow disabling it.
+
 ### Prometheus Monitoring
 The RabbitMQ cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
 ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
@@ -100,10 +111,16 @@ A Horizontal Pod Autoscaler (HPA) is intentionally not configured for the Rabbit
 unnecessary queue rebalancing, leader re-election, and temporary instability. To ensure predictable performance and stable quorum behavior, the cluster uses a fixed replica count. Scaling 
 should instead be handled at the application or consumer level, where stateless workloads can safely scale horizontally.  
 
-### Service Account Token
-RabbitMQ does not require access to the Kubernetes API.  
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
 
-Auto-mounting of the Service Account token has been disabled.
+| Port  | Description                                                                 |
+| ----- | --------------------------------------------------------------------------- |
+| 5672  | AMQP protocol port used for messaging between clients and RabbitMQ.         |
+| 15672 | RabbitMQ Management UI (HTTP dashboard) for administration and monitoring.  |
+| 15692 | Prometheus metrics endpoint for RabbitMQ monitoring.                        |
+| 4369  | Erlang Port Mapper Daemon (EPMD) used for node discovery in clusters.       |
+| 25672 | Inter-node and clustering communication port for RabbitMQ nodes.            |
 
 ## Dependencies
 RabbitMQ has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

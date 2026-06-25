@@ -1,4 +1,5 @@
 # Nano.Azure.Kubernetes.CertManager
+
 > _Cert Manager deployment for managing SSL certificates for Nano applications._
 
 ***
@@ -10,7 +11,7 @@
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
-  * **[Service Account Token](#service-account-token)**  
+  * **[Azure Policy](#azure-policy)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -71,6 +72,17 @@ capabilities are dropped to minimize the attack surface, and the filesystem is s
 The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
 
+Cert-Manager requires access to the Kubernetes API, and the service account token is auto-mounted.  
+
+| Hardened Security             | Value | Description                                                              |
+| ----------------------------- | ----- | ------------------------------------------------------------------------ |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                                       |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.                                   |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.                             |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.                                    |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.                           |
+| Automount SA Token Disabled   | ✖️    | The chart requires auto-mounting the SA token, and it remains enabled.   |
+
 ### Prometheus Monitoring
 Monitoring is enabled for Prometheus and exposes a `/metrics` endpoint for scraping Cert-Manager runtime and scanning statistics. This allows integration with Kubernetes-native observability 
 stacks such as Prometheus and Grafana for real-time visibility into scanner health, performance, and workload activity. Metrics can be used to detect anomalies, track scan throughput, and 
@@ -87,11 +99,13 @@ the default probe configuration to improve stability and reduce the likelihood o
 
 These probes help Kubernetes manage pod lifecycle events, automatically restarting unhealthy instances and preventing traffic from being routed to unready pods.  
 
-### Service Account Token
-Cert-Manager requires access to the Kubernetes API.  
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
 
-The Service Account token is explicitly mounted as a projected volume instead of relying on Kubernetes' default auto-mounting behaviour. Auto-mounting is disabled at both the 
-ServiceAccount and pod level (`automountServiceAccountToken: false`), and the token is manually mapped into the container at the standard path (`/var/run/secrets/kubernetes.io/serviceaccount`). 
+| Port | Description                                                                    |
+| ---- | ------------------------------------------------------------------------------ |
+| 443  | HTTPS API endpoint used by cert-manager webhooks and Kubernetes API access.    |
+| 9402 | Metrics endpoint exposed by cert-manager controllers for Prometheus scraping.  |
 
 ## Dependencies
 Cert-Manager has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

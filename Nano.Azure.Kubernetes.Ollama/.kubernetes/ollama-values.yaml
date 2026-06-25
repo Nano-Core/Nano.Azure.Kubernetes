@@ -23,7 +23,7 @@ serviceAccount:
 automountServiceAccountToken: false
 
 podSecurityContext:
-  runAsNonRoot: true
+  runAsNonRoot: false
   seccompProfile:
     type: RuntimeDefault
 
@@ -31,7 +31,7 @@ securityContext:
   allowPrivilegeEscalation: false
   privileged: false
   readOnlyRootFilesystem: true
-  runAsNonRoot: true
+  runAsNonRoot: false
   capabilities:
     drop:
       - ALL

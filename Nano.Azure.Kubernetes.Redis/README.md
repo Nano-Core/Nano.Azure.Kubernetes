@@ -12,7 +12,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
-  * **[Service Account Token](#service-account-token)**  
+  * **[Azure Policy](#azure-policy)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -55,8 +55,6 @@ To see the available configuration options for the deployment, use the following
 
 ```powershell
 kubectl explain rediscluster;
-
-kubectl explain rediscluster.{{group}};
 ```
 
 ### High Availability
@@ -70,6 +68,17 @@ capabilities are dropped to minimize the attack surface, and the filesystem is s
 
 The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
+
+Redis Operator requires access to the Kubernetes API and therefore cannot have auto-mounting of the Service Account token disabled.  
+
+| Hardened Security             | Value | Description                                                                                  |
+| ----------------------------- | ----- | -------------------------------------------------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                                                           |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.                                                       |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.                                                 |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.                                                        |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.                                               |
+| Automount SA Token Disabled   | ✖️    | The chart does not supoport disable auto-mounting of the SA token, and it remains enabled.   |
 
 ### Prometheus Monitoring
 The Redis cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
@@ -90,10 +99,13 @@ For this reason, the Redis Operator does not support Kubernetes HPA for `RedisCl
 Instead, scaling is performed explicitly by updating the `clusterSize` field in the `RedisCluster` specification. The operator then handles the full lifecycle of the change, including 
 provisioning new pods, joining them to the cluster, and redistributing hash slots to ensure even data distribution and cluster health.  
 
-### Service Account Token
-Redis Operator requires access to the Kubernetes API and therefore cannot have auto-mounting of the Service Account token disabled.
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
 
-⚠️ The chart does not support manually mounting the Service Account token as a projected volume, leaving auto-mounting as the only option.
+| Port | Description                                                                 |
+| ---- | --------------------------------------------------------------------------- |
+| 6379 | Default Redis server port used for client connections and data operations.  |
+| 9121 | Redis exporter metrics endpoint for Prometheus monitoring.                  |
 
 ## Dependencies
 Redis has the following dependencies that must be deployed or otherwise satisfied prior to setup.  

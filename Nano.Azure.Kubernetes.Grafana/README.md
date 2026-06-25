@@ -13,7 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
-  * **[Service Account Token](#service-account-token)**  
+  * **[Azure Policy](#azure-policy)**  
   * **[Grafana Sidecars](#grafana-sidecars)**  
   * **[SMTP Configuration](#smtp-configuration)**  
 * **[Dependencies](#dependencies)**  
@@ -63,6 +63,17 @@ reduce exposure to kernel-level risks.
 
 Grafana stores its persistent state primarily in `/var/lib/grafana`, which is backed by a PVC in Kubernetes. This includes plugins, cache, and optional embedded database data if no external 
 database is used. Configuration and provisioning are mounted separately and are not persisted. Temporary runtime data is stored in `/tmp` and `/var/tmp` using ephemeral volumes.
+
+Grafana does not require direct access to the Kubernetes API. Only the **[Grafana Sidecars](#grafana-sidecars)** require API access when enabled.  
+
+| Hardened Security             | Value | Description                                        |
+| ----------------------------- | ----- | -------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                 |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.             |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.       |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.              |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.     |
+| Automount SA Token Disabled   | ✔️    | Service Account token auto-mounting is disabled.   |
 
 ### Persistence
 Persistence is disabled by default to support stateless deployments and safe scaling of Grafana pods without PVC multi-attach issues. All core state (users, orgs, dashboards) is stored in an 
@@ -115,11 +126,12 @@ autoscaling:
   targetMemory: 180
 ```
 
-### Service Account Token
-Grafana requires access to the Kubernetes API.  
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
 
-The Service Account token is explicitly mounted as a projected volume instead of relying on Kubernetes' default auto-mounting behaviour. Auto-mounting is disabled at both the 
-ServiceAccount and pod level (`automountServiceAccountToken: false`), and the token is manually mapped into the container at the standard path (`/var/run/secrets/kubernetes.io/serviceaccount`). 
+| Port | Description                                             |
+| ---- | ------------------------------------------------------- |
+| 8080 | HTTP endpoint for Grafana web UI and dashboard access.  |
 
 ### Grafana Sidecars
 The Grafana sidecars automatically discover and load configuration from Kubernetes ConfigMaps and Secrets without requiring a Grafana restart.
@@ -134,11 +146,18 @@ used in GitOps-based Kubernetes environments.
 
 > ⚠️ Dashboards and datasources are not included by default and must be created via ConfigMaps or Secrets. Sidecars only handle discovery and syncing, not provisioning.  
 
-To enable sidecars simply toogle the `enabled: true` for `dashboards` and/or `datasources`.
+By default sidecars are disabled. To enable sidecars simply toogle the `enabled: true` for `dashboards` and/or `datasources` in the `grafana-values.yaml`.  
 
-> ⚠️ Enabling sidecars requires automounting service account tokens, which may be flagged by Microsoft Defender for Cloud.
+When sidecars are enabled, the pod requires access to the Kubernetes API to watch ConfigMaps, which requires a ServiceAccount with token mounting enabled. Toggle the following values in 
+`grafana-values.yaml` if sidecars are enabled.  
 
+```powershell
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
 
+automountServiceAccountToken: true
+```
 
 ### SMTP Configuration
 Grafana is configured with SMTP integration for sending emails such as password resets, alert notifications, and other system-generated messages. SMTP settings are provided via a Kubernetes 
