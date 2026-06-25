@@ -75,6 +75,13 @@ jobs:
               throw "error";
           }
 
+          Get-Content .kubernetes/rabbitmq-network-policy.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-network-policy.tmp.yaml;
+          kubectl apply -f .kubernetes/rabbitmq-network-policy.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+
           Get-Content .kubernetes/rabbitmq-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-service-monitor.tmp.yaml;
           kubectl apply -f .kubernetes/rabbitmq-service-monitor.tmp.yaml;
           if ($LastExitCode -ne 0) 
