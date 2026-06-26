@@ -177,19 +177,23 @@ jobs:
       - name: Update Azure Policies
         shell: pwsh
         run: |
-          $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value" -o json | ConvertFrom-Json | Where-Object { $_ -ne "-1" });
+          $ports = @("8080", "3000");
 
-          $ports = @("8080");
-          $missingPorts = $ports | Where-Object { $currentPorts -notcontains $_ };
+          $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value[]" -o tsv | Where-Object { $_ -ne "-1" })
+          $missingPorts = @($ports | Where-Object { $currentPorts -notcontains $_ })
 
           if ($missingPorts.Count -gt 0) {
-              $mergedPorts = ($currentPorts + $missingPorts) | Select-Object -Unique;
-              $mergedPortsJson = $mergedPorts | ConvertTo-Json -Compress;
+              $mergedPorts = @(($currentPorts + $missingPorts) | Select-Object -Unique)
+
+              $allParams = az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters" -o json | ConvertFrom-Json;
+              $allParams.allowedservicePortsInKubernetesClusterPorts.value = $mergedPorts;
+
+              $params = $allParams | ConvertTo-Json -Compress -Depth 100;
 
               az policy assignment update `
                   -n SecurityCenterBuiltIn `
                   --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
-                  --params "{`"allowedservicePortsInKubernetesClusterPorts`":{`"value`":$mergedPortsJson}}";
+                  --params $params;
           }
 
       - name: GitHub Release
