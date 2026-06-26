@@ -177,7 +177,7 @@ jobs:
       - name: Update Azure Policies
         shell: pwsh
         run: |
-          $ports = @("8080", "3000");
+          $ports = @("3000");
 
           $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value[]" -o tsv | Where-Object { $_ -ne "-1" })
           $missingPorts = @($ports | Where-Object { $currentPorts -notcontains $_ })

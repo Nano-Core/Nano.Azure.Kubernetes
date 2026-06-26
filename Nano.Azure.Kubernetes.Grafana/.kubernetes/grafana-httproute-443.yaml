@@ -15,4 +15,4 @@ spec:
             value: /
       backendRefs:
         - name: %APP_NAME%
-          port: 8080
+          port: 3000
