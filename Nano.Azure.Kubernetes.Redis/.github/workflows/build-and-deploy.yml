@@ -9,9 +9,7 @@ on:
 env:
   APP_NAME: redis
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
-  REDIS_VERSION: 8.6.1
-  REDIS_EXPORTER_VERSION: 1.83.0
-  CHART_VERSION: 0.24.0
+  CHART_VERSION: 0.25.0
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
@@ -24,6 +22,8 @@ env:
   KUBERNETES_MEMORY_LIMIT: 1572Mi
   KUBERNETES_CPU_REQUEST: 100m
   KUBERNETES_CPU_LIMIT: 300m
+  REDIS_VERSION: 8.6.1
+  REDIS_EXPORTER_VERSION: 1.84.0
   REDIS_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_REDIS_PASSWORD || secrets.STAGING_REDIS_PASSWORD }}
 jobs:
   build-and-deploy:
