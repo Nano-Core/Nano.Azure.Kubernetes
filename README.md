@@ -40,7 +40,7 @@ The key principles in the Nano Kubernetes infrastructure are.
 - Minimal operational overhead – reduce complexity in deployment and operations  
 - Composable architecture – components can be combined or deployed independently  
 
-#### Azure Architecture
+#### Azure Kubernetes Architecture
 ![Nano Kubernetes Architecture](https://raw.githubusercontent.com/Nano-Core/Nano.Azure.Kubernetes/v10.0.0-ga/.assets/Nano-Kubernetes.jpg)
 
 ## ⚙️ Required Tools
