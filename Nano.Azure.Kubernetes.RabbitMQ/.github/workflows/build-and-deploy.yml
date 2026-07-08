@@ -24,9 +24,6 @@ env:
   KUBERNETES_CPU_LIMIT: 300m
   RABBITMQ_OPERATOR_VERSION: v2.21.1
   RABBITMQ_IMAGE_TAG: 4.3.2-management
-  RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_RABBITMQ_ADMIN_USERNAME || secrets.STAGING_RABBITMQ_ADMIN_USERNAME }}
-  RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || secrets.STAGING_RABBITMQ_ADMIN_PASSWORD }}
-  RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_RABBITMQ_ERLANG_COOKIE || secrets.STAGING_RABBITMQ_ERLANG_COOKIE }}
 jobs:
   build-and-deploy:
     runs-on:
@@ -57,13 +54,6 @@ jobs:
 
           Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
           kubectl apply -f .kubernetes/rabbitmq-cluster.tmp.yaml;
-          if ($LastExitCode -ne 0) 
-          { 
-              throw "error";
-          }
-
-          Get-Content .kubernetes/rabbitmq-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-auth-secret.tmp.yaml;
-          kubectl apply -f .kubernetes/rabbitmq-auth-secret.tmp.yaml;
           if ($LastExitCode -ne 0) 
           { 
               throw "error";

@@ -39,14 +39,6 @@ To manually scale down the RabbitMQ cluster after reducing the replica count, ex
 kubectl scale statefulsets $env:APP_NAME-server --replicas=$env:KUBERNETES_REPLICA_COUNT -n $env:KUBERNETES_NAMESPACE
 ```
 
-Before running the GitHub Action, add the following GitHub organization secrets.  
-
-| Secret                                     | Type    | Description                                                |
-| ------------------------------------------ | ------- | ---------------------------------------------------------- |
-| `{{environment}}_RABBITMQ_ADMIN_USERNAME`  | secrets | The username of the primary RabbitMQ admin user.           |
-| `{{environment}}_RABBITMQ_ADMIN_PASSWORD`  | secrets | The password of the primary RabbitMQ admin user.           |
-| `{{environment}}_RABBITMQ_ERLANG_COOKIE`   | secrets | The Erlang cookie used for cluster authentication.         |
-
 To access the RabbitMQ cluster locally, use port-forwarding to expose the management UI by running the following command.
 
 ```powershell
