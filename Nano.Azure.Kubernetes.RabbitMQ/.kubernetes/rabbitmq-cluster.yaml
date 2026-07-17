@@ -5,6 +5,7 @@ metadata:
   namespace: %KUBERNETES_NAMESPACE%
 spec:
   replicas: %KUBERNETES_REPLICA_COUNT%
+  image: docker.io/rabbitmq:%RABBITMQ_IMAGE_TAG%
   rabbitmq:
     additionalConfig: |
       default_queue_type = quorum
@@ -48,8 +49,9 @@ spec:
               fsGroupChangePolicy: OnRootMismatch
               seccompProfile:
                 type: RuntimeDefault
+            automountServiceAccountToken: false
             containers:
-              - name: rabbitmq
+              - name: %APP_NAME%
                 securityContext:
                   privileged: false
                   runAsUser: 999

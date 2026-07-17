@@ -1,4 +1,13 @@
+serviceAccount:
+  create: false
+  automountServiceAccountToken: false
+
+automountServiceAccountToken: false
+
 replicas: %KUBERNETES_REPLICA_COUNT%
+
+service:
+  port: 3000
 
 podDisruptionBudget:
   enabled: true
@@ -119,7 +128,7 @@ grafana.ini:
     cookie_secure: true
     cookie_samesite: strict
     strict_transport_security: true
-    strict_transport_security_max_age_seconds: 31536000
+    strict_transport_security_max_age_seconds: 15768000
     strict_transport_security_preload: true
     x_content_type_options: true
     x_xss_protection: true
@@ -154,12 +163,26 @@ grafana.ini:
     password: $__file{/etc/smtp/auth/apikey}
 
 sidecar:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 96Mi 
+    limits:
+      cpu: 75m
+      memory: 288Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop:
+        - ALL
   dashboards:
-    enabled: true
+    enabled: false
     searchNamespace: %KUBERNETES_NAMESPACE%
-
   datasources:
-    enabled: true
+    enabled: false
     searchNamespace: %KUBERNETES_NAMESPACE%
 
 revisionHistoryLimit: 0

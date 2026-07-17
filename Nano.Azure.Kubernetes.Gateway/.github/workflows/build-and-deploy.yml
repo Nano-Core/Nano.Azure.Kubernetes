@@ -2,10 +2,11 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
+  workflow_dispatch:
 env:
   APP_NAME: public-gateway
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -15,19 +16,18 @@ env:
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
   AZURE_GROUP_KUBERNETES_ASSETS: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES_ASSETS }} 
   AZURE_GROUP_DNS: ${{ vars.AZURE_RESOURCE_GROUP_DNS }} 
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
-  KUBERNETES_NAMESPACE: apps
-  CERTIFICATE_ORGANIZATION: Nano-Core
+  KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
+  CERTIFICATE_ORGANIZATION: Nano-ignite
 jobs:
   build-and-deploy:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
-      id-token: write
     concurrency:
       group: ${{ github.repository }}
       cancel-in-progress: true
@@ -43,6 +43,8 @@ jobs:
           $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
           az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
 
+          echo "KUBERNETES_CLUSTER=$env:KUBERNETES_CLUSTER" >> $env:GITHUB_ENV;
+
       - name: Deploy Gateway And Load Balancer
         shell: pwsh
         run: |
@@ -54,8 +56,6 @@ jobs:
                   "  - `"*.$_`""
               }
           ) -join "`n"
-
-          $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
 
           Get-Content .kubernetes/gateway.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/gateway.tmp.yaml;
           kubectl apply -f .kubernetes/gateway.tmp.yaml;
@@ -71,6 +71,13 @@ jobs:
               throw "error";
           }
 
+          Get-Content .kubernetes/frontend-tls-policy.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/frontend-tls-policy.tmp.yaml;
+          kubectl apply -f .kubernetes/frontend-tls-policy.tmp.yaml;
+          if ($LastExitCode -ne 0) 
+          { 
+              throw "error";
+          }
+          
       - name: Create DNS CNAME Records
         shell: pwsh
         run: |
@@ -112,7 +119,7 @@ jobs:
           }
  
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}
@@ -120,6 +127,7 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false

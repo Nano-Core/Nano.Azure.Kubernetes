@@ -45,6 +45,7 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      readOnlyRootFilesystem: true
       runAsUser: 1000
       runAsGroup: 1000
       capabilities:
@@ -91,6 +92,7 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      readOnlyRootFilesystem: true
       runAsUser: 1000
       runAsGroup: 1000
       capabilities:
@@ -138,6 +140,7 @@ spec:
       allowPrivilegeEscalation: false
       runAsNonRoot: true
       privileged: false
+      readOnlyRootFilesystem: true
       runAsUser: 1000
       runAsGroup: 1000
       capabilities:
@@ -152,6 +155,21 @@ spec:
       cpu: %KUBERNETES_CPU_LIMIT%
       memory: %KUBERNETES_MEMORY_LIMIT%
   storage:
+    volumeMount:
+      mountPath:
+        - name: tmp-dir
+          mountPath: /tmp
+        - name: redis-conf-dir
+          mountPath: /etc/redis
+        - name: node-conf-dir
+          mountPath: /node-conf
+      volume:
+        - name: tmp-dir
+          emptyDir: {}
+        - name: redis-conf-dir
+          emptyDir: {}
+        - name: node-conf-dir
+          emptyDir: {}
     volumeClaimTemplate:
       spec:
         accessModes:

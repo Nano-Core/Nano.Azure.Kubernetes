@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Azure Policy](#azure-policy)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -66,8 +67,8 @@ the official ClamAV mirrors and downloads updated signature databases directly i
 
 This ensures all ClamAV instances operate with up-to-date threat intelligence while maintaining consistency across the StatefulSet.
 
-| Component           | Status    |
-| ------------------- | --------- |
+| Component           | Status     |
+| ------------------- | ---------- |
 | FreshClam running   | ✅ yes     |
 | Auto updates        | ✅ enabled |
 | Database download   | ✅ working |
@@ -77,10 +78,6 @@ This ensures all ClamAV instances operate with up-to-date threat intelligence wh
 
 Overall, the deployment provides fully automated virus definition updates with no manual intervention required, ensuring continuous protection and consistent scanning capability across 
 all replicas.
-
-
-
-
 
 ### High Availability
 The ClamAV deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 
@@ -93,6 +90,17 @@ capabilities are dropped to minimize the attack surface, and the filesystem is s
 
 The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
+
+ClamAV does not require access to the Kubernetes API. Auto-mounting of the Service Account token has been disabled.
+
+| Hardened Security             | Value | Description                                        |
+| ----------------------------- | ----- | -------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                 |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.             |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.       |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.              |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.     |
+| Automount SA Token Disabled   | ✔️    | Service Account token auto-mounting is disabled.   |
 
 ### Prometheus Monitoring
 Monitoring is enabled for Prometheus and exposes a `/metrics` endpoint for scraping ClamAV runtime and scanning statistics. This allows integration with Kubernetes-native observability 
@@ -121,10 +129,18 @@ To inspect the currently allocated resources or review the HPA configuration, us
 kubectl dscribe hpa $env:APP_NAME -n $env:KUBERNETES_NAMESPACE;
 ```
 
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
+
+| Port | Description                                                            |
+| ---- | ---------------------------------------------------------------------- |
+| 3310 | ClamAV daemon (clamd) service port used for scanning requests.         |
+| 9906 | ClamAV metrics endpoint used for Prometheus monitoring and scraping.   |
+
 ## Dependencies
 ClamAV has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
+| Dependency                                                                                                                                   | Description                                  | 
+| -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |

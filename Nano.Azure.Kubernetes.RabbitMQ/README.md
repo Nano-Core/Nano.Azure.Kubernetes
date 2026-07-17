@@ -1,6 +1,6 @@
 # Nano.Azure.Kubernetes.RabbitMQ
 
-> _RabbitMQ cluster for Nano applications providing reliable messaging._
+> _RabbitMQ cluster for Nano applications providing reliable messaging queueing._
 
 ***
 
@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Azure Policy](#azure-policy)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -22,6 +23,9 @@ Protocol), making it highly flexible and suitable for a wide range of use cases.
 tolerance, and ability to handle large volumes of messages efficiently.  
 
 > 📖 Learn more about **[RabbitMQ Cluster Operator](https://www.rabbitmq.com/kubernetes/operator/operator-overview)**.
+
+The RabbitMQ Cluster operator releases and version can be found here: **[Cluster Operator Releases](https://github.com/rabbitmq/cluster-operator/releases)**, and the RabbitMQ image version can 
+be found here: **[Image Versions](https://hub.docker.com/_/rabbitmq)**.  
 
 ## Registration
 This deployment provisions a RabbitMQ cluster in Kubernetes.  
@@ -34,14 +38,6 @@ To manually scale down the RabbitMQ cluster after reducing the replica count, ex
 ```powershell
 kubectl scale statefulsets $env:APP_NAME-server --replicas=$env:KUBERNETES_REPLICA_COUNT -n $env:KUBERNETES_NAMESPACE
 ```
-
-Before running the GitHub Action, add the following GitHub organization secrets.  
-
-| Secret                                     | Type    | Description                                                |
-| ------------------------------------------ | ------- | ---------------------------------------------------------- |
-| `{{environment}}_RABBITMQ_ADMIN_USERNAME`  | secrets | The username of the primary RabbitMQ admin user.           |
-| `{{environment}}_RABBITMQ_ADMIN_PASSWORD`  | secrets | The password of the primary RabbitMQ admin user.           |
-| `{{environment}}_RABBITMQ_ERLANG_COOKIE`   | secrets | The Erlang cookie used for cluster authentication.         |
 
 To access the RabbitMQ cluster locally, use port-forwarding to expose the management UI by running the following command.
 
@@ -59,8 +55,6 @@ To see the available configuration options for the deployment, use the following
 
 ```powershell
 kubectl explain rabbitmqcluster;
-
-kubectl explain rabbitmqcluster.{{group}};
 ```
 
 ### High Availability
@@ -81,6 +75,19 @@ capabilities are dropped to minimize the attack surface, and the filesystem is s
 The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
 
+RabbitMQ Operator requires access to the Kubernetes API and therefore cannot have auto-mounting of the Service Account token disabled. 
+
+| Hardened Security             | Value | Description                                                                                                                            |
+| ----------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                                                                                                     |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.                                                                                                 |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.                                                                                           |
+| ReadOnly Root Filesystem      | (✔️)  | Root filesystem is mounted read-only. The Operator's `setup-container` uses `readOnlyRootFilesystem: false` and it cannot be changed.  |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.                                                                                         |
+| Automount SA Token Disabled   | ✖️    | Service Account token auto-mounting is enabled, but the Operator reverts that during reconsiliation.                                   |
+
+> ⚠️ Currently, the `automountServiceAccountToken: false` is ignored. RabbitMQ Operator overrides this setting and does not allow disabling it.
+
 ### Prometheus Monitoring
 The RabbitMQ cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
 ensure reliable scraping and consistent observability of the StatefulSet pods across restarts, rescheduling, and scaling events.
@@ -96,10 +103,21 @@ A Horizontal Pod Autoscaler (HPA) is intentionally not configured for the Rabbit
 unnecessary queue rebalancing, leader re-election, and temporary instability. To ensure predictable performance and stable quorum behavior, the cluster uses a fixed replica count. Scaling 
 should instead be handled at the application or consumer level, where stateless workloads can safely scale horizontally.  
 
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
+
+| Port  | Description                                                                 |
+| ----- | --------------------------------------------------------------------------- |
+| 5672  | AMQP protocol port used for messaging between clients and RabbitMQ.         |
+| 15672 | RabbitMQ Management UI (HTTP dashboard) for administration and monitoring.  |
+| 15692 | Prometheus metrics endpoint for RabbitMQ monitoring.                        |
+| 4369  | Erlang Port Mapper Daemon (EPMD) used for node discovery in clusters.       |
+| 25672 | Inter-node and clustering communication port for RabbitMQ nodes.            |
+
 ## Dependencies
 RabbitMQ has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
+| Dependency                                                                                                                                   | Description                                  | 
+| -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |

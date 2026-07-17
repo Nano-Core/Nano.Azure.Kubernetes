@@ -4,6 +4,9 @@ nodeSelector:
 
 replicaCount: %KUBERNETES_REPLICA_COUNT%
 
+image:
+  repository: docker.io/clamav/clamav
+
 podSecurityContext:
   runAsUser: 100
   runAsGroup: 101
@@ -16,9 +19,13 @@ securityContext:
   allowPrivilegeEscalation: false
   runAsNonRoot: true
   privileged: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
       - ALL
+
+serviceAccount:
+  automountServiceAccountToken: false
 
 resources:
   requests:
@@ -74,8 +81,18 @@ hpa:
   cpu: %KUBERNETES_CPU_UTILIZATION%
   memory: %KUBERNETES_MEMORY_UTILIZATION%
 
+extraVolumes:
+  - name: tmp-dir
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp-dir
+    mountPath: /tmp
+
 metrics:
   enabled: true
+  image:
+    repository: docker.io/sergeymakinen/clamav_exporter
   path: /metrics
   resources:
     limits:
@@ -88,6 +105,7 @@ metrics:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
     privileged: false
+    readOnlyRootFilesystem: true
     capabilities:
       drop:
         - ALL

@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Azure Policy](#azure-policy)**  
   * **[GPU Nodepool](#gpu-nodepool)**  
 * **[Dependencies](#dependencies)**  
 
@@ -51,8 +52,19 @@ pods across the cluster whenever possible.
 The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
 capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
 
-The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
+The container runs as the root user, and Ollama currently does not support configuring `runAsNonRoot: true`. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
+
+Ollama does not require access to the Kubernetes API. Auto-mounting of the Service Account token has been disabled.  
+
+| Hardened Security             | Value | Description                                                                                                  |
+| ----------------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
+| Run As Non-Root               | ✖️    | The chart currently does not support. See **[GitHub Issue](https://github.com/ollama/ollama/issues/5986)**.  |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.                                                                       |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.                                                                 |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.                                                                        |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.                                                               |
+| Automount SA Token Disabled   | ✔️    | Service Account token auto-mounting is disabled.                                                             |
 
 ### Prometheus Monitoring
 Ollama is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
@@ -84,6 +96,13 @@ autoscaling:
   targetMemoryUtilizationPercentage: 180
 ````
 
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
+
+| Port  | Description                                                           |
+| ----- | --------------------------------------------------------------------- |
+| 11434 | HTTP API endpoint used by Ollama for model inference and management.  |
+
 ### GPU Nodepool
 This deployment requires a pre-provisioned GPU node pool in the Kubernetes cluster, as workloads are intended to run on GPU-enabled nodes for hardware-accelerated inference.
 
@@ -96,7 +115,7 @@ Without this prerequisite, GPU workloads in this deployment will not be schedule
 ## Dependencies
 Ollama has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
+| Dependency                                                                                                                                   | Description                                  | 
+| -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |

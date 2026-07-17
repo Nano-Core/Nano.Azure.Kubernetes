@@ -13,6 +13,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Azure Policy](#azure-policy)**  
   * **[Grafana Sidecars](#grafana-sidecars)**  
   * **[SMTP Configuration](#smtp-configuration)**  
 * **[Dependencies](#dependencies)**  
@@ -62,6 +63,17 @@ reduce exposure to kernel-level risks.
 
 Grafana stores its persistent state primarily in `/var/lib/grafana`, which is backed by a PVC in Kubernetes. This includes plugins, cache, and optional embedded database data if no external 
 database is used. Configuration and provisioning are mounted separately and are not persisted. Temporary runtime data is stored in `/tmp` and `/var/tmp` using ephemeral volumes.
+
+Grafana does not require direct access to the Kubernetes API. Only the **[Grafana Sidecars](#grafana-sidecars)** require API access when enabled.  
+
+| Hardened Security             | Value | Description                                        |
+| ----------------------------- | ----- | -------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                 |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.             |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.       |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.              |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.     |
+| Automount SA Token Disabled   | ✔️    | Service Account token auto-mounting is disabled.   |
 
 ### Persistence
 Persistence is disabled by default to support stateless deployments and safe scaling of Grafana pods without PVC multi-attach issues. All core state (users, orgs, dashboards) is stored in an 
@@ -114,6 +126,13 @@ autoscaling:
   targetMemory: 180
 ```
 
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
+
+| Port | Description                                             |
+| ---- | ------------------------------------------------------- |
+| 8080 | HTTP endpoint for Grafana web UI and dashboard access.  |
+
 ### Grafana Sidecars
 The Grafana sidecars automatically discover and load configuration from Kubernetes ConfigMaps and Secrets without requiring a Grafana restart.
 
@@ -122,10 +141,23 @@ The Grafana sidecars automatically discover and load configuration from Kubernet
 | dashboards    | Automatically imports dashboards from ConfigMaps.             |
 | datasources   | Automatically imports datasources from ConfigMaps/Secrets.    |
 
-With `searchNamespace: ALL`, Grafana can watch the entire cluster for matching resources. This enables a “dashboards and datasources as code” approach, which is commonly used in GitOps-based 
-Kubernetes environments.
+With `searchNamespace: %KUBERNETES_NAMESPACE%`, Grafana can watch the entire namespace for matching resources. This enables a “dashboards and datasources as code” approach, which is commonly 
+used in GitOps-based Kubernetes environments.
 
 > ⚠️ Dashboards and datasources are not included by default and must be created via ConfigMaps or Secrets. Sidecars only handle discovery and syncing, not provisioning.  
+
+By default sidecars are disabled. To enable sidecars simply toogle the `enabled: true` for `dashboards` and/or `datasources` in the `grafana-values.yaml`.  
+
+When sidecars are enabled, the pod requires access to the Kubernetes API to watch ConfigMaps, which requires a ServiceAccount with token mounting enabled. Toggle the following values in 
+`grafana-values.yaml` if sidecars are enabled.  
+
+```powershell
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+
+automountServiceAccountToken: true
+```
 
 ### SMTP Configuration
 Grafana is configured with SMTP integration for sending emails such as password resets, alert notifications, and other system-generated messages. SMTP settings are provided via a Kubernetes 
@@ -136,10 +168,10 @@ This allows Grafana to send emails for features such as account recovery and ale
 ## Dependencies
 Grafana has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.MySql](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazuremysql)**                                                                                | The MySQL server.                            |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
-| **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetesgateway)**                                                       | The Kubernetes Gateway deployment.           |
-| **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetessendgrid)**                                                     | The SendGrid secret deployment.              |
+| Dependency                                                                                                                                         | Description                                  | 
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**               | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.MySql](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazuremysql)**                              | The MySQL server.                            |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**         | The GitHub Runner container job deployment.  |
+| **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetesgateway)**     | The Kubernetes Gateway deployment.           |
+| **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetessendgrid)**   | The SendGrid secret deployment.              |

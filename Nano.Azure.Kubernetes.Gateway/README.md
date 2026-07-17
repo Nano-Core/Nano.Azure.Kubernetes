@@ -2,8 +2,6 @@
 
 > _The public gateway exposing Nano applications externally._
 
-> ⚠️ This setup relies on features available in `aks-preview`.
-
 ***
 
 ## Table of Contents
@@ -20,6 +18,8 @@ such as `GatewayClass`, `Gateway`, and `HTTPRoute`, providing a more flexible an
 splitting, and multi-protocol workloads.  
 
 > 📖 Learn more about **[Kubernetes API Gateway](https://kubernetes.io/docs/concepts/services-networking/gateway/)** and check out the source on [GitHub Gateway Repository](https://github.com/kubernetes-sigs/gateway-api).  
+
+> ⚠️ This setup currently relies on features available in `aks-preview`.
 
 ## Registration
 This deployment provisions an API Gateway and load balancer in Kubernetes, and also creates a TLS certificate.  
@@ -54,12 +54,21 @@ consistent public entry point for all applications without requiring manual DNS 
 
 The setup is idempotent, meaning records are created only when missing and safely reused otherwise.
 
+### TLS Policy
+LS is configured through a `FrontendTLSPolicy` CRD applied to the public gateway listener. The policy uses the predefined 2023-06-S strict profile, enforcing a minimum of TLS 1.2 while allowing 
+TLS 1.2 and 1.3 only. It restricts cipher suites to ECDHE with GCM encryption, ensuring perfect forward secrecy via P-256 and P-384 curves.
+
+This hardened configuration achieves an A+ rating on SSL Labs and Mozilla Observatory. Unlike the default Azure ALB 2023-06 policy, which still includes CBC-based cipher suites, 
+the strict -S variant removes these weaker options and is required to reach the highest security grade.
+
+> 📖 Learn more about **[Azure Gateway SSL Policy](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/tls-policy)**.
+
 ## Dependencies
 Gateway has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                                                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).                                                          |
-| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                                                                                      | Azure DNS maps external domains to the Kubernetes cluster for traffic routing.               |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.                                                  |
-| **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**                   | Kubernetes Cert-Manager deployment responsible for issueing and managing SSL certificates.   |
+| Dependency                                                                                                                                                                           | Description                                                                                  | 
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                 | The Azure Kubernetes Service (AKS).                                                          |
+| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                                                                      | Azure DNS maps external domains to the Kubernetes cluster for traffic routing.               |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**                                           | The GitHub Runner container job deployment.                                                  |
+| **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**   | Kubernetes Cert-Manager deployment responsible for issueing and managing SSL certificates.   |

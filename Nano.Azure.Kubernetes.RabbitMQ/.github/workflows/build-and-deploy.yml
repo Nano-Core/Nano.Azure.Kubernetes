@@ -2,10 +2,11 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
+  workflow_dispatch:
 env:
   APP_NAME: rabbitmq
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
@@ -13,26 +14,24 @@ env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: cpu
-  KUBERNETES_NAMESPACE: apps
-  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
+  KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
+  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/main' && 3 || 2 }}  
   KUBERNETES_MEMORY_REQUEST: 384Mi
   KUBERNETES_MEMORY_LIMIT: 1152Mi 
   KUBERNETES_CPU_REQUEST: 100m
   KUBERNETES_CPU_LIMIT: 300m
-  RABBITMQ_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ADMIN_USERNAME || secrets.STAGING_RABBITMQ_ADMIN_USERNAME }}
-  RABBITMQ_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ADMIN_PASSWORD || secrets.STAGING_RABBITMQ_ADMIN_PASSWORD }}
-  RABBITMQ_ERLANG_COOKIE: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_RABBITMQ_ERLANG_COOKIE || secrets.STAGING_RABBITMQ_ERLANG_COOKIE }}
+  RABBITMQ_OPERATOR_VERSION: v2.21.1
+  RABBITMQ_IMAGE_TAG: 4.3.2-management
 jobs:
   build-and-deploy:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
-      id-token: write
     concurrency:
       group: ${{ github.repository }}
       cancel-in-progress: true
@@ -51,17 +50,10 @@ jobs:
       - name: Deploy RabbitMQ
         shell: pwsh
         run: |
-          kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml;
+          kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/download/$env:RABBITMQ_OPERATOR_VERSION/cluster-operator.yml;
 
           Get-Content .kubernetes/rabbitmq-cluster.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-cluster.tmp.yaml;
           kubectl apply -f .kubernetes/rabbitmq-cluster.tmp.yaml;
-          if ($LastExitCode -ne 0) 
-          { 
-              throw "error";
-          }
-
-          Get-Content .kubernetes/rabbitmq-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/rabbitmq-auth-secret.tmp.yaml;
-          kubectl apply -f .kubernetes/rabbitmq-auth-secret.tmp.yaml;
           if ($LastExitCode -ne 0) 
           { 
               throw "error";
@@ -81,8 +73,30 @@ jobs:
               throw "error";
           }
 
+      - name: Update Azure Policies
+        shell: pwsh
+        run: |
+          $ports = @("5672","15672","15692","4369","25672");
+
+          $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value[]" -o tsv | Where-Object { $_ -ne "-1" })
+          $missingPorts = @($ports | Where-Object { $currentPorts -notcontains $_ })
+
+          if ($missingPorts.Count -gt 0) {
+              $mergedPorts = @(($currentPorts + $missingPorts) | Select-Object -Unique)
+
+              $allParams = az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters" -o json | ConvertFrom-Json;
+              $allParams.allowedservicePortsInKubernetesClusterPorts.value = $mergedPorts;
+
+              $params = $allParams | ConvertTo-Json -Compress -Depth 100;
+
+              az policy assignment update `
+                  -n SecurityCenterBuiltIn `
+                  --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
+                  --params $params;
+          }
+
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}
@@ -90,10 +104,11 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-          
+
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

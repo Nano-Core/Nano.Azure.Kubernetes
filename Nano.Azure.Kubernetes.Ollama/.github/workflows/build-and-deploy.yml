@@ -2,22 +2,23 @@ name: Build and Deploy
 on:
   pull_request:
     branches:
-      - master 
+      - main 
   push:
     branches:
-      - master 
+      - main 
+  workflow_dispatch:
 env:
   APP_NAME: ollama
   VERSION: '${{ vars.VERSION }}.${{ github.run_number }}.${{ github.run_attempt }}'
-  CHART_VERSION: 1.56.0
+  CHART_VERSION: 1.63.0
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} 
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }} 
   AZURE_GROUP_KUBERNETES: ${{ vars.AZURE_RESOURCE_GROUP_KUBERNETES }} 
-  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/master' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_AZURE_SUBSCRIPTION_ID || secrets.STAGING_AZURE_SUBSCRIPTION_ID }}
   KUBERNETES_NODEPOOL_COMPUTE: gpu
-  KUBERNETES_NAMESPACE: apps
-  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/master' && 3 || 2 }}  
+  KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
+  KUBERNETES_REPLICA_COUNT: ${{ github.ref == 'refs/heads/main' && 3 || 2 }}  
   KUBERNETES_MEMORY_REQUEST: 1536Mi
   KUBERNETES_MEMORY_LIMIT: 4608Mi
   KUBERNETES_CPU_REQUEST: 500m
@@ -29,10 +30,9 @@ jobs:
     runs-on:
       - self-hosted
       - linux 
-      - ${{ github.ref == 'refs/heads/master' && 'Production' || 'Staging' }}
+      - ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
     permissions:
       contents: write
-      id-token: write
     concurrency:
       group: ${{ github.repository }}
       cancel-in-progress: true
@@ -51,6 +51,8 @@ jobs:
       - name: Deploy Ollama
         shell: pwsh
         run: |
+          $env:GPU_ENABLED = if ($env:KUBERNETES_NODEPOOL_COMPUTE -eq "gpu") { "true" } else { "false" }
+
           helm repo add otwld https://helm.otwld.com;
           helm repo update;
 
@@ -68,8 +70,30 @@ jobs:
               throw "error";
           }
 
+      - name: Update Azure Policies
+        shell: pwsh
+        run: |
+          $ports = @("11434");
+
+          $currentPorts = @(az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters.allowedservicePortsInKubernetesClusterPorts.value[]" -o tsv | Where-Object { $_ -ne "-1" })
+          $missingPorts = @($ports | Where-Object { $currentPorts -notcontains $_ })
+
+          if ($missingPorts.Count -gt 0) {
+              $mergedPorts = @(($currentPorts + $missingPorts) | Select-Object -Unique)
+
+              $allParams = az policy assignment show -n SecurityCenterBuiltIn --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" --query "parameters" -o json | ConvertFrom-Json;
+              $allParams.allowedservicePortsInKubernetesClusterPorts.value = $mergedPorts;
+
+              $params = $allParams | ConvertTo-Json -Compress -Depth 100;
+
+              az policy assignment update `
+                  -n SecurityCenterBuiltIn `
+                  --scope "/subscriptions/$env:AZURE_SUBSCRIPTION_ID" `
+                  --params $params;
+          }
+
       - name: GitHub Release
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ env.VERSION }}
@@ -77,10 +101,11 @@ jobs:
           body: |
             Version: ${{ env.VERSION }}
             Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
-          
+
       - name: Slack Notification
         if: always()
         uses: act10ns/slack@v2

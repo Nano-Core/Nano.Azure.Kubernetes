@@ -8,6 +8,12 @@ crds:
   keep: true
 
 replicaCount: %KUBERNETES_REPLICA_COUNT%
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+
+automountServiceAccountToken: true
   
 resources:
   requests:
@@ -24,10 +30,11 @@ securityContext:
 
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
     - ALL
-  readOnlyRootFilesystem: true
 
 affinity:
   podAntiAffinity:
@@ -68,10 +75,11 @@ webhook:
       type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
     capabilities:
       drop:
       - ALL
-    readOnlyRootFilesystem: true
   livenessProbe:
     enabled: true
     initialDelaySeconds: 30
@@ -94,6 +102,10 @@ webhook:
     limits:
        cpu: 30m
        memory: 96Mi
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+  automountServiceAccountToken: true
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -119,10 +131,15 @@ cainjector:
       type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
     capabilities:
       drop:
       - ALL
-    readOnlyRootFilesystem: true
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+  automountServiceAccountToken: true
   resources:
     requests:
        cpu: 10m

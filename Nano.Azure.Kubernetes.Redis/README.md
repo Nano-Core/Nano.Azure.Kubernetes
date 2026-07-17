@@ -12,6 +12,7 @@
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
   * **[Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)**  
+  * **[Azure Policy](#azure-policy)**  
 * **[Dependencies](#dependencies)**  
 
 ## Summary
@@ -25,18 +26,12 @@ high-performance, scalable applications.
 ## Registration
 This deployment provisions a Redis cluster in Kubernetes.  
 
-The deployment uses the [Redis Cluster Operator Helm Chart](https://artifacthub.io/packages/helm/ot-container-kit/redis-operator) to provision and manage the underlying infrastructure required 
+The deployment uses the **[Redis Cluster Operator Helm Chart](https://artifacthub.io/packages/helm/ot-container-kit/redis-operator)** to provision and manage the underlying infrastructure required 
 for a Redis cluster. This operator is responsible for creating, configuring, and maintaining all Redis cluster components, ensuring a consistent and automated deployment model.
 
 As part of the deployment configuration, explicit versioning is required for both the Redis container image and the Redis exporter image to ensure reproducibility and compatibility across 
-environments. Available Redis image versions can be reviewed in the [Redis Image Releases](https://quay.io/repository/opstree/redis?tab=tags), while corresponding exporter versions are listed 
-in the [Redis Exporter Images](https://quay.io/repository/opstree/redis-exporter?tab=tags).
-
-Before running the GitHub Action, add the following GitHub organization secrets.  
-
-| Secret                            | Type    | Description               |
-| --------------------------------- | ------- | ------------------------- |
-| `{{environment}}_REDIS_PASSWORD`  | secrets | The password for Redis.   |
+environments. Available Redis image versions can be reviewed in the **[Redis Image Releases](https://quay.io/repository/opstree/redis?tab=tags)**, while corresponding exporter versions are listed 
+in the **[Redis Exporter Images](https://quay.io/repository/opstree/redis-exporter?tab=tags)**.
 
 To access the Redis cluster locally, use port-forwarding to expose the management UI by running the following command.
 
@@ -54,8 +49,6 @@ To see the available configuration options for the deployment, use the following
 
 ```powershell
 kubectl explain rediscluster;
-
-kubectl explain rediscluster.{{group}};
 ```
 
 ### High Availability
@@ -69,6 +62,17 @@ capabilities are dropped to minimize the attack surface, and the filesystem is s
 
 The container runs with a dedicated non-root user to enforce least-privilege access to mounted volumes. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  
+
+Redis Operator requires access to the Kubernetes API and therefore cannot have auto-mounting of the Service Account token disabled.  
+
+| Hardened Security             | Value | Description                                                                                  |
+| ----------------------------- | ----- | -------------------------------------------------------------------------------------------- |
+| Run As Non-Root               | ✔️    | Containers run as a non-root user.                                                           |
+| Non Privileged                | ✔️    | Privileged container mode is disabled.                                                       |
+| Disallow Privilege Escalation | ✔️    | Processes cannot gain additional privileges.                                                 |
+| ReadOnly Root Filesystem      | ✔️    | Root filesystem is mounted read-only.                                                        |
+| All Capabilities Dropped      | ✔️    | All Linux capabilities are removed by default.                                               |
+| Automount SA Token Disabled   | ✖️    | The chart does not supoport disable auto-mounting of the SA token, and it remains enabled.   |
 
 ### Prometheus Monitoring
 The Redis cluster is integrated with Prometheus monitoring in Azure Kubernetes Service (AKS) using a `ServiceMonitor`, because its metrics are exposed through stable Service endpoints that 
@@ -89,10 +93,18 @@ For this reason, the Redis Operator does not support Kubernetes HPA for `RedisCl
 Instead, scaling is performed explicitly by updating the `clusterSize` field in the `RedisCluster` specification. The operator then handles the full lifecycle of the change, including 
 provisioning new pods, joining them to the cluster, and redistributing hash slots to ensure even data distribution and cluster health.  
 
+### Azure Policy
+The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterPorts` to permit the following ports.  
+
+| Port | Description                                                                 |
+| ---- | --------------------------------------------------------------------------- |
+| 6379 | Default Redis server port used for client connections and data operations.  |
+| 9121 | Redis exporter metrics endpoint for Prometheus monitoring.                  |
+
 ## Dependencies
 Redis has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                                                                           | Description                                  | 
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                                 | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Kubernetes.GitHubRunner](https://github.com/Nano-Core/Nano.Azure.Kubernetes.GitHubRunner/tree/master/Nano.Azure.Kubernetes.GitHubRunner/README.md#nanoazurekubernetesgithubrunner)**   | The GitHub Runner container job deployment.  |
+| Dependency                                                                                                                                   | Description                                  | 
+| -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |
