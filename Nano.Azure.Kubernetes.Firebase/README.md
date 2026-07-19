@@ -27,5 +27,5 @@ Before running the GitHub Action, add the following GitHub organization vars and
 ## Dependencies
 | Dependency                                                                                                                                   | Description                                  | 
 | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |

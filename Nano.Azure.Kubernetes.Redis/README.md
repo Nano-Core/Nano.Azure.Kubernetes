@@ -7,7 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
-  * **[High Availability](#topology-affinity)**  
+  * **[High Availability](#high-availability)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
@@ -106,5 +106,5 @@ Redis has the following dependencies that must be deployed or otherwise satisfie
 
 | Dependency                                                                                                                                   | Description                                  | 
 | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |

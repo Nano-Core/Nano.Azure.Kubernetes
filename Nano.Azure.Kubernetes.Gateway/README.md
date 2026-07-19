@@ -34,9 +34,9 @@ kubectl get gateways -n {{namespace}};
 This configuration defines a Kubernetes `Gateway` that exposes applications over HTTPS on port 443 with TLS termination handled at the gateway. It uses the `azure-alb-external` GatewayClass, 
 which integrates the Gateway API with Azure Application Gateway for Containers to manage external traffic routing into the cluster.  
 
-The Gateway integrates with **[Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**, providing stable public hostnames without the need to 
+The Gateway integrates with **[Azure DNS](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.DNS/README.md#nanoazuredns)**, providing stable public hostnames without the need to 
 manually manage IP addresses. DNS records are automatically mapped to the address managed by the underlying Application Load Balancer (ALB), configured as part of the 
-**[Azure Kubernetes Cluster Deployment](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**
+**[Azure Kubernetes Cluster Deployment](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**
 
 Multiple domain names are supported.  
 
@@ -68,7 +68,7 @@ Gateway has the following dependencies that must be deployed or otherwise satisf
 
 | Dependency                                                                                                                                                                           | Description                                                                                  | 
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                 | The Azure Kubernetes Service (AKS).                                                          |
-| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                                                                      | Azure DNS maps external domains to the Kubernetes cluster for traffic routing.               |
-| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**                                           | The GitHub Runner container job deployment.                                                  |
-| **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**   | Kubernetes Cert-Manager deployment responsible for issueing and managing SSL certificates.   |
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                                 | The Azure Kubernetes Service (AKS).                                                          |
+| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.DNS/README.md#nanoazuredns)**                                                                      | Azure DNS maps external domains to the Kubernetes cluster for traffic routing.               |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**                                           | The GitHub Runner container job deployment.                                                  |
+| **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**   | Kubernetes Cert-Manager deployment responsible for issueing and managing SSL certificates.   |
