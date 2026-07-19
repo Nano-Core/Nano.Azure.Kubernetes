@@ -1,6 +1,6 @@
 # Nano.Azure.Kubernetes
 
-> _Cloud-native Kubernetes workloads, Helm-based deployments, and platform components for Nano applications._
+> _Cloud-native Kubernetes workloads, Helm-based deployments, and platform components for Nano applications._ 
 
 ***
 
