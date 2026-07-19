@@ -7,7 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
-  * **[High Availability](#topology-affinity)**  
+  * **[High Availability](#high-availability)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Persistence](#persistence)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
@@ -168,10 +168,10 @@ This allows Grafana to send emails for features such as account recovery and ale
 ## Dependencies
 Grafana has the following dependencies that must be deployed or otherwise satisfied prior to setup.  
 
-| Dependency                                                                                                                                         | Description                                  | 
-| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**               | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.MySql](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazuremysql)**                              | The MySQL server.                            |
-| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**         | The GitHub Runner container job deployment.  |
-| **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetesgateway)**     | The Kubernetes Gateway deployment.           |
-| **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.MySql/README.md#nanoazurekubernetessendgrid)**   | The SendGrid secret deployment.              |
+| Dependency                                                                                                                                                                  | Description                                  | 
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                        | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.MySql](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.MySql/README.md#nanoazuremysql)**                                                       | The MySQL server.                            |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**                                  | The GitHub Runner container job deployment.  |
+| **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Gateway/README.md#nanoazurekubernetesgateway)**      | The Kubernetes Gateway deployment.           |
+| **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.SendGrid/README.md#nanoazurekubernetessendgrid)**   | The SendGrid secret deployment.              |

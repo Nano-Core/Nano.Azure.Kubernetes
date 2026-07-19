@@ -6,20 +6,20 @@
 
 ## Table of Contents
 &nbsp;&nbsp;&nbsp;&nbsp;📌 **[Summary](#-summary)**  
-&nbsp;&nbsp;&nbsp;&nbsp;⚙️ **[Required Tools](#-required-tools)**  
-&nbsp;&nbsp;&nbsp;&nbsp;⚖️ **[Licenses](#-licenses)**  
+&nbsp;&nbsp;&nbsp;&nbsp;⚙️ **[Required Tools](#%EF%B8%8F-required-tools)**  
+&nbsp;&nbsp;&nbsp;&nbsp;⚖️ **[Licenses](#%EF%B8%8F-licenses)**  
 
 ### Documentaion
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.ClamAV](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.ClamAV/README.md#nanoazurekubernetesclamav)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Firebase](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetesfirebase)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.Gateway/README.md#nanoazurekubernetesgateway)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Grafana](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetesgrafana)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Ollama](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetesollama)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.RabbitMq](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetesrabbitmq)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Redis](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetesredis)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetessendgrid)**  
-&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Twilio](https://github.com/Nano-Core/Nano.Azure.Kubernetes/tree/master/Nano.Azure.Kubernetes.RabbitMq/README.md#nanoazurekubernetestwilio)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.CertManager](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.CertManager/README.md#nanoazurekubernetescertmanager)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.ClamAV](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.ClamAV/README.md#nanoazurekubernetesclamav)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Firebase](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Firebase/README.md#nanoazurekubernetesfirebase)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Gateway/README.md#nanoazurekubernetesgateway)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Grafana](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Grafana/README.md#nanoazurekubernetesgrafana)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Ollama](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Ollama/README.md#nanoazurekubernetesollama)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.RabbitMq](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.RabbitMQ/README.md#nanoazurekubernetesrabbitmq)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Redis](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Redis/README.md#nanoazurekubernetesredis)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.SendGrid](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.SendGrid/README.md#nanoazurekubernetessendgrid)**  
+&nbsp;&nbsp;&nbsp;&nbsp;🔹 **[Nano.Azure.Kubernetes.Twilio](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Twilio/README.md#nanoazurekubernetestwilio)**  
 
 ## 📌 Summary
 Nano.Azure.Kubernetes provides a curated set of Kubernetes deployments, Helm charts, and platform components designed to support **[Nano Applications](https://github.com/Nano-Core/Nano.Library/blob/master/README.md#nanolibrary)**. 
@@ -41,7 +41,7 @@ The key principles in the Nano Kubernetes infrastructure are.
 - Composable architecture – components can be combined or deployed independently  
 
 #### Azure Kubernetes Architecture
-![Nano Kubernetes Architecture](https://raw.githubusercontent.com/Nano-Core/Nano.Azure.Kubernetes/v10.0.0-ga/.assets/Nano-Kubernetes.jpg)
+![Nano Kubernetes Architecture](https://raw.githubusercontent.com/Nano-Core/Nano.Azure.Kubernetes/master/.assets/Nano-Kubernetes.jpg)
 
 ## ⚙️ Required Tools
 Before continuing, make sure you have the following tools installed and configured.

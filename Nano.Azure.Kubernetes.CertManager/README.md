@@ -7,7 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
-  * **[High Availability](#topology-affinity)**  
+  * **[High Availability](#high-availability)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Prometheus Monitoring](#prometheus-monitoring)**  
   * **[Health Probes](#health-probes)**  
@@ -31,7 +31,7 @@ This deployment provisions Cert-Manager in AKS.
 The deployment is based on the cert-manager tutorial **[Getting started with cert-manager on Azure Kubernetes Service (AKS) and Let’s Encrypt](https://cert-manager.io/docs/tutorials/getting-started-aks-letsencrypt)**, 
 available in the official cert-manager documentation, and Microsoft’s guide **[Using cert-manager with Let’s Encrypt and Gateway API on Azure Application Gateway for Containers](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-cert-manager-lets-encrypt-gateway-api)**.  
 
-It works in conjunction with **[Azure DNS](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)** to issue certificates using the DNS-01 challenge method and 
+It works in conjunction with **[Azure DNS](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.DNS/README.md#nanoazuredns)** to issue certificates using the DNS-01 challenge method and 
 supports any number of domain names within a single certificate.  
 
 Before running the GitHub Action, add the following GitHub organization secrets.  
@@ -112,6 +112,6 @@ Cert-Manager has the following dependencies that must be deployed or otherwise s
 
 | Dependency                                                                                                                                   | Description                                  | 
 | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
-| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
-| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.Dns/README.md#nanoazuredns)**                              | The Azure DNS Service.                       |
-| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/tree/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |
+| **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**         | The Azure Kubernetes Service (AKS).          |
+| **[Nano.Azure.Dns](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.DNS/README.md#nanoazuredns)**                              | The Azure DNS Service.                       |
+| **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**   | The GitHub Runner container job deployment.  |
