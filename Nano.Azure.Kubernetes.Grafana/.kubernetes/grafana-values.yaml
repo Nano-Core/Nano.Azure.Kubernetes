@@ -113,7 +113,7 @@ extraSecretMounts:
     mountPath: /etc/db/certs
     readOnly: true
   - name: smtp-auth
-    secretName: sendgrid-auth
+    secretName: resend-auth
     mountPath: /etc/smtp/auth
     readOnly: true
 

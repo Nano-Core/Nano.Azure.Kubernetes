@@ -23,11 +23,13 @@ This deployment creates a secret containing secrets for Resend email.
 
 Before running the GitHub Action, add the following GitHub organization vars and secrets.  
 
-| Secret / Var                     | Type    | Description                          |
-| -------------------------------- | ------- | ------------------------------------ |
-| `{{environment}}_RESEND_API_KEY` | secrets | RESEND SMTP API key.                 |
-| `RESEND_SENDER_NAME`             | vars    | Sender display name for emails.      |
-| `RESEND_SENDER_EMAIL`            | vars    | Sender email address for emails.     |
+| Secret / Var                     | Type    | Description                                 |
+| -------------------------------- | ------- | ------------------------------------------- |
+| `RESEND_HOST`                    | secrets | SMTP host for Resend (`smtp.resend.com`).   |
+| `RESEND_USERNAME`                | secrets | SMTP username (`resend`).                   |
+| `{{environment}}_RESEND_API_KEY` | secrets | RESEND SMTP API key.                        |
+| `RESEND_SENDER_NAME`             | vars    | Sender display name for emails.             |
+| `RESEND_SENDER_EMAIL`            | vars    | Sender email address for emails.            |
 
 ## Dependencies
 | Dependency                                                                                                                                   | Description                                  | 
