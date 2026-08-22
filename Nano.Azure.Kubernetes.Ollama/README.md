@@ -44,9 +44,9 @@ the configuration will be deleted during deployment to keep the environment alig
 which models should be pulled or loaded, and to ensure that sufficient memory and GPU resources are allocated for the selected models.
 
 ### High Availability
-The Ollama deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
-and resilience by reducing the risk of multiple Ollama pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
-pods across the cluster whenever possible.  
+The Ollama deployment is configured with Kubernetes pod anti-affinity rules and topology spread constraints to encourage replicas to be scheduled across different cluster nodes. This helps 
+improve workload availability and resilience by reducing the risk of multiple Ollama pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname 
+topology key to distribute pods across the cluster whenever possible.  
 
 ### Hardened Security
 The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
