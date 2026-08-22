@@ -58,9 +58,9 @@ kubectl explain rabbitmqcluster;
 ```
 
 ### High Availability
-The RabbitMQ deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
-and resilience by reducing the risk of multiple RabbitMQ pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
-pods across the cluster whenever possible.  
+The RabbitMQ deployment is configured with Kubernetes pod anti-affinity rules and topology spread constraints (automatics, not configurable) to encourage replicas to be scheduled across 
+different cluster nodes. This helps improve workload availability and resilience by reducing the risk of multiple RabbitMQ pods being affected by a single node failure. The affinity 
+configuration uses the Kubernetes hostname topology key to distribute pods across the cluster whenever possible.  
 
 ### Durable Quorum Queues 
 Each pod is provisioned with a 10Gi persistent volume to ensure durable message storage for queues.

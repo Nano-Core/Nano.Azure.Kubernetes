@@ -52,9 +52,9 @@ kubectl explain rediscluster;
 ```
 
 ### High Availability
-The Redis deployment is configured with Kubernetes pod anti-affinity rules to encourage replicas to be scheduled across different cluster nodes. This helps improve workload availability 
-and resilience by reducing the risk of multiple Redis pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname topology key to distribute 
-pods across the cluster whenever possible.  
+The Redis deployment is configured with Kubernetes pod anti-affinity and topology spread constraints rules to encourage replicas to be scheduled across different cluster nodes. This helps 
+improve workload availability and resilience by reducing the risk of multiple Redis pods being affected by a single node failure. The affinity configuration uses the Kubernetes hostname 
+topology key to distribute pods across the cluster whenever possible.  
 
 ### Hardened Security
 The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
