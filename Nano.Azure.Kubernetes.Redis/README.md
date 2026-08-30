@@ -33,6 +33,9 @@ As part of the deployment configuration, explicit versioning is required for bot
 environments. Available Redis image versions can be reviewed in the **[Redis Image Releases](https://quay.io/repository/opstree/redis?tab=tags)**, while corresponding exporter versions are listed 
 in the **[Redis Exporter Images](https://quay.io/repository/opstree/redis-exporter?tab=tags)**.
 
+> ⚠️ Redis is without authentication and is not exposed outside the cluster. It should only be used for transient, non-sensitive data that can be safely lost or recreated, such as caches or 
+ephemeral session state, never anything persistent or sensitive.
+
 To access the Redis cluster locally, use port-forwarding to expose the management UI by running the following command.
 
 ```powershell

@@ -54,22 +54,6 @@ jobs:
           helm repo add ot-helm https://ot-container-kit.github.io/helm-charts;
           helm repo update;
 
-          $env:REDIS_SECRET_EXISTS = kubectl get secret "$env:APP_NAME-auth" -n $env:KUBERNETES_NAMESPACE --ignore-not-found -o name;
-
-          if (-not $env:REDIS_SECRET_EXISTS)
-          {
-              $env:REDIS_PASSWORD = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % { [char]$_ });
-              echo "::add-mask::$env:REDIS_PASSWORD";
-
-              Get-Content .kubernetes/redis-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-auth-secret.tmp.yaml;
-              kubectl apply -f .kubernetes/redis-auth-secret.tmp.yaml;
-
-              if ($LastExitCode -ne 0)
-              {
-                  throw "error";
-              };
-          }
-
           Get-Content .kubernetes/redis-operator-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-operator-values.tmp.yaml;
           helm upgrade $env:APP_NAME ot-helm/redis-operator --install --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/redis-operator-values.tmp.yaml --wait --timeout 10m;
           if ($LastExitCode -ne 0) 
