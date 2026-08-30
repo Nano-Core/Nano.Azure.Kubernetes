@@ -59,6 +59,7 @@ jobs:
           if (-not $env:REDIS_SECRET_EXISTS)
           {
               $env:REDIS_PASSWORD = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % { [char]$_ });
+              echo "::add-mask::$env:REDIS_PASSWORD";
 
               Get-Content .kubernetes/redis-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/redis-auth-secret.tmp.yaml;
               kubectl apply -f .kubernetes/redis-auth-secret.tmp.yaml;
