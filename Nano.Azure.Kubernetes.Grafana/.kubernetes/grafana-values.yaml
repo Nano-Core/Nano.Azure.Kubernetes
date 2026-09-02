@@ -124,7 +124,7 @@ grafana.ini:
     enable_gzip: true
     serve_from_sub_path: false
   plugins:
-    preinstall_async: false
+    preinstall_auto_update: false
   security:
     disable_initial_admin_creation: false
     cookie_secure: true
