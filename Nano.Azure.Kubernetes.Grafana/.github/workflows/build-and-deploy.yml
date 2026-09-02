@@ -27,7 +27,7 @@ env:
   KUBERNETES_CPU_LIMIT: 300m
   GRAFANA_ADMIN_USERNAME: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_GRAFANA_ADMIN_USERNAME || secrets.STAGING_GRAFANA_ADMIN_USERNAME }}
   GRAFANA_ADMIN_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.PRODUCTION_GRAFANA_ADMIN_PASSWORD || secrets.STAGING_GRAFANA_ADMIN_PASSWORD }}
-  SQL_TYPE: mysql
+  SQL_TYPE: postgres
   SQL_NAME: grafana
   SQL_USER: grafana-user
   SUB_DOMAIN_NAME: grafana
@@ -58,10 +58,12 @@ jobs:
         if: env.SQL_TYPE == 'mysql'
         shell: pwsh
         run: |
-          $serverInfo = az mysql flexible-server show -g $env:AZURE_GROUP_DATABASE -n $env:APP_NAME --query "{host:fullyQualifiedDomainName, port:databasePort}" -o json | ConvertFrom-Json;
-          $env:SQL_HOST = $serverInfo.host;
-          $env:SQL_PORT = $serverInfo.port;
-          $env:SQL_ADMIN_USER = az mysql flexible-server ad-admin list -g $env:AZURE_GROUP_DATABASE -s $env:APP_NAME --query "[0].login" -o tsv;
+          $env:SQL_SERVER = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].name -o tsv;
+          $env:SQL_HOST = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].fullyQualifiedDomainName -o tsv;
+          $env:SQL_PORT = az mysql flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].databasePort -o tsv;
+          $env:SQL_SSL_MODE = "skip-verify";
+          $env:SQL_ADMIN_USER = az mysql flexible-server ad-admin list -g $env:AZURE_GROUP_DATABASE -s $env:SQL_SERVER --query "[0].login" -o tsv;
+
           $env:MYSQL_PWD = az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv;
 
           $env:SQL_SECRET_EXISTS = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE --ignore-not-found -o name;
@@ -69,149 +71,98 @@ jobs:
           if (-not $env:SQL_SECRET_EXISTS)
           {
               $env:SQL_PASSWORD = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % { [char]$_ });
-              $syncStatement = "ALTER USER '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD';";
-          }
-          else
-          {
-              $env:SQL_PASSWORD = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE -o jsonpath="{.data.SQL_PASSWORD}" | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) };
-              $syncStatement = "";
-          }
+              echo "::add-mask::$env:SQL_PASSWORD";
 
-          echo "::add-mask::$env:SQL_PASSWORD";
+              mysql `
+                  --host $env:SQL_HOST `
+                  --port $env:SQL_PORT `
+                  --user $env:SQL_ADMIN_USER `
+                  --enable-cleartext-plugin `
+                  -e "CREATE USER IF NOT EXISTS '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; ALTER USER '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; FLUSH PRIVILEGES;";
+
+              echo "SQL_PASSWORD=$env:SQL_PASSWORD" >> $env:GITHUB_ENV;
+          }
 
           mysql `
               --host $env:SQL_HOST `
               --port $env:SQL_PORT `
               --user $env:SQL_ADMIN_USER `
               --enable-cleartext-plugin `
-              -e "CREATE DATABASE IF NOT EXISTS ``$env:SQL_NAME``; CREATE USER IF NOT EXISTS '$env:SQL_USER'@'%' IDENTIFIED BY '$env:SQL_PASSWORD'; $syncStatement GRANT ALL PRIVILEGES ON ``$env:SQL_NAME``.* TO '$env:SQL_USER'@'%'; FLUSH PRIVILEGES;";
+              -e "CREATE DATABASE IF NOT EXISTS ``$env:SQL_NAME``; GRANT ALL PRIVILEGES ON ``$env:SQL_NAME``.* TO '$env:SQL_USER'@'%'; FLUSH PRIVILEGES;";
 
           echo "SQL_HOST=$env:SQL_HOST" >> $env:GITHUB_ENV;
           echo "SQL_PORT=$env:SQL_PORT" >> $env:GITHUB_ENV;
-          echo "SQL_PASSWORD=$env:SQL_PASSWORD" >> $env:GITHUB_ENV;
+          echo "SQL_SSL_MODE=$env:SQL_SSL_MODE" >> $env:GITHUB_ENV;
 
       - name: Initialize PostgreSQL Database
-        if: env.SQL_TYPE == 'postgresql'
+        if: env.SQL_TYPE == 'postgres'
         shell: pwsh
         run: |
-          $env:SQL_HOST = az postgres flexible-server show -g $env:AZURE_GROUP_DATABASE -n $env:APP_NAME --query fullyQualifiedDomainName -o tsv;
+          $env:SQL_SERVER = az postgres flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].name -o tsv;
+          $env:SQL_HOST = az postgres flexible-server list -g $env:AZURE_GROUP_DATABASE --query [0].fullyQualifiedDomainName -o tsv;
           $env:SQL_PORT = "5432";
-          $env:SQL_ADMIN_USER = az postgres flexible-server ad-admin list -g $env:AZURE_GROUP_DATABASE -s $env:APP_NAME --query "[0].principalName" -o tsv;
-
-          $env:SQL_SECRET_EXISTS = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE --ignore-not-found -o name;
-
-          if (-not $env:SQL_SECRET_EXISTS)
-          {
-              $env:SQL_PASSWORD = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % { [char]$_ });
-              $syncStatement = "ALTER ROLE ""$env:SQL_USER"" WITH PASSWORD '$env:SQL_PASSWORD';";
-          }
-          else
-          {
-              $env:SQL_PASSWORD = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE -o jsonpath="{.data.SQL_PASSWORD}" | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) };
-              $syncStatement = "";
-          }
-
-          echo "::add-mask::$env:SQL_PASSWORD";
+          $env:SQL_SSL_MODE = "require";
 
           $env:PGHOST = $env:SQL_HOST;
           $env:PGPORT = $env:SQL_PORT;
-          $env:PGUSER = $env:SQL_ADMIN_USER;
+          $env:PGUSER = az postgres flexible-server microsoft-entra-admin list -g $env:AZURE_GROUP_DATABASE -s $env:SQL_SERVER --query "[0].principalName" -o tsv;
           $env:PGPASSWORD = az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv;
-          $env:PGSSLMODE = "require";
-
-          $roleSql = @"
-            DO `$do`$
-            BEGIN
-               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$env:SQL_USER') THEN
-                  CREATE ROLE "$env:SQL_USER" LOGIN PASSWORD '$env:SQL_PASSWORD';
-               END IF;
-            END
-            `$do`$;
-            $syncStatement
-          "@;
-
-          psql -d postgres -c $roleSql;
-          psql -d postgres -c "SELECT 'CREATE DATABASE $env:SQL_NAME' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$env:SQL_NAME')\gexec";
-          psql -d postgres -c "ALTER DATABASE $env:SQL_NAME OWNER TO ""$env:SQL_USER"";";
-
-          echo "SQL_HOST=$env:SQL_HOST" >> $env:GITHUB_ENV;
-          echo "SQL_PORT=$env:SQL_PORT" >> $env:GITHUB_ENV;
-          echo "SQL_PASSWORD=$env:SQL_PASSWORD" >> $env:GITHUB_ENV;
-
-      - name: Initialize SQL Server Database
-        if: env.SQL_TYPE == 'sqlserver'
-        shell: pwsh
-        run: |
-          $env:SQL_HOST = "$env:APP_NAME.database.windows.net";
-          $env:SQL_PORT = "1433";
-          $env:SQL_ADMIN_USER = az sql server ad-admin list -g $env:AZURE_GROUP_DATABASE -s $env:APP_NAME --query "[0].login" -o tsv;
-          $env:SQL_TOKEN = az account get-access-token --resource "https://database.windows.net/" --query accessToken -o tsv;
+          $env:PGSSLMODE = $env:SQL_SSL_MODE;
 
           $env:SQL_SECRET_EXISTS = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE --ignore-not-found -o name;
 
           if (-not $env:SQL_SECRET_EXISTS)
           {
               $env:SQL_PASSWORD = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | % { [char]$_ });
-              $syncStatement = "ALTER LOGIN [$env:SQL_USER] WITH PASSWORD = '$env:SQL_PASSWORD';";
-          }
-          else
-          {
-              $env:SQL_PASSWORD = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE -o jsonpath="{.data.SQL_PASSWORD}" | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) };
-              $syncStatement = "";
-          }
+              echo "::add-mask::$env:SQL_PASSWORD";
 
-          echo "::add-mask::$env:SQL_PASSWORD";
-
-          Install-Module -Name SqlServer -Scope CurrentUser -Force -AllowClobber;
-
-          $masterSql = @"
-            IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = '$env:SQL_USER')
-            BEGIN
-                CREATE LOGIN [$env:SQL_USER] WITH PASSWORD = '$env:SQL_PASSWORD';
-            END
-            $syncStatement
-
-            IF DB_ID('$env:SQL_NAME') IS NULL
-            BEGIN
-                CREATE DATABASE [$env:SQL_NAME];
-            END
+              $roleSql = @"
+                DO `$do`$
+                BEGIN
+                   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$env:SQL_USER') THEN
+                      CREATE ROLE "$env:SQL_USER" LOGIN PASSWORD '$env:SQL_PASSWORD';
+                   END IF;
+                END
+                `$do`$;
+                ALTER ROLE "$env:SQL_USER" WITH PASSWORD '$env:SQL_PASSWORD';
           "@;
 
-          Invoke-Sqlcmd -ServerInstance $env:SQL_HOST -Database "master" -AccessToken $env:SQL_TOKEN -Query $masterSql;
+              psql -d postgres -c $roleSql;
 
-          $dbSql = @"
-            IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = '$env:SQL_USER')
-            BEGIN
-                CREATE USER [$env:SQL_USER] FOR LOGIN [$env:SQL_USER];
-            END
-            ALTER ROLE db_datareader ADD MEMBER [$env:SQL_USER];
-            ALTER ROLE db_datawriter ADD MEMBER [$env:SQL_USER];
-            ALTER ROLE db_ddladmin ADD MEMBER [$env:SQL_USER];
-          "@;
+              echo "SQL_PASSWORD=$env:SQL_PASSWORD" >> $env:GITHUB_ENV;
+          }
 
-          Invoke-Sqlcmd -ServerInstance $env:SQL_HOST -Database $env:SQL_NAME -AccessToken $env:SQL_TOKEN -Query $dbSql;
+          "SELECT 'CREATE DATABASE $env:SQL_NAME' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$env:SQL_NAME')\gexec" | psql -d postgres;
+          psql -d postgres -c "ALTER DATABASE $env:SQL_NAME OWNER TO ""$env:SQL_USER"";";
+          psql -d $env:SQL_NAME -c "ALTER SCHEMA public OWNER TO ""$env:SQL_USER"";";
 
           echo "SQL_HOST=$env:SQL_HOST" >> $env:GITHUB_ENV;
           echo "SQL_PORT=$env:SQL_PORT" >> $env:GITHUB_ENV;
-          echo "SQL_PASSWORD=$env:SQL_PASSWORD" >> $env:GITHUB_ENV;
+          echo "SQL_SSL_MODE=$env:SQL_SSL_MODE" >> $env:GITHUB_ENV;
 
       - name: Deploy Grafana
         shell: pwsh
         run: |
-          $zoneNames = az network dns zone list -g $env:AZURE_GROUP_DNS --query "[].name" -o json | ConvertFrom-Json;
+          $env:SQL_SECRET_EXISTS = kubectl get secret "$env:APP_NAME-sql-auth" -n $env:KUBERNETES_NAMESPACE --ignore-not-found -o name;
 
-          $env:ROUTE_HOST_NAMES = (
-              $zoneNames | ForEach-Object {
-                  "  - $env:SUB_DOMAIN_NAME.$_"
+          if (-not $env:SQL_SECRET_EXISTS)
+          {
+              Get-Content .kubernetes/grafana-sql-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-sql-auth-secret.tmp.yaml;
+              kubectl apply -f .kubernetes/grafana-sql-auth-secret.tmp.yaml;
+              if ($LastExitCode -ne 0) 
+              { 
+                  throw "error";
               }
-          ) -join "`n";
+          }
 
-          $env:GATEWAY_NAME = kubectl get gateway -n $env:KUBERNETES_NAMESPACE -o jsonpath='{.items[0].metadata.name}';
+          Invoke-WebRequest -Uri "https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem" -OutFile "digicert-global-root-g2.pem";
+          $env:SQL_CA_CERT_BASE64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes("digicert-global-root-g2.pem"));
 
-          Get-Content .kubernetes/grafana-sql-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-sql-auth-secret.tmp.yaml;
-          kubectl apply -f .kubernetes/grafana-sql-auth-secret.tmp.yaml;
-          if ($LastExitCode -ne 0) 
-          { 
+          Get-Content .kubernetes/grafana-sql-ca-cert-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-sql-ca-cert-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/grafana-sql-ca-cert-secret.tmp.yaml;
+
+          if ($LastExitCode -ne 0)
+          {
               throw "error";
           }
 
@@ -224,27 +175,6 @@ jobs:
 
           Get-Content .kubernetes/grafana-values.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-values.tmp.yaml;
           helm upgrade --install $env:APP_NAME oci://ghcr.io/grafana-community/helm-charts/grafana --namespace $env:KUBERNETES_NAMESPACE --version $env:CHART_VERSION -f .kubernetes/grafana-values.tmp.yaml;
-          if ($LastExitCode -ne 0) 
-          { 
-              throw "error";
-          }
-
-          Get-Content .kubernetes/grafana-httproute-80.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-httproute-80.tmp.yaml;
-          kubectl apply -f .kubernetes/grafana-httproute-80.tmp.yaml;
-          if ($LastExitCode -ne 0) 
-          { 
-              throw "error";
-          }
-
-          Get-Content .kubernetes/grafana-httproute-443.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-httproute-443.tmp.yaml;
-          kubectl apply -f .kubernetes/grafana-httproute-443.tmp.yaml;
-          if ($LastExitCode -ne 0) 
-          { 
-              throw "error";
-          }
-
-          Get-Content .kubernetes/grafana-service-monitor.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/grafana-service-monitor.tmp.yaml;
-          kubectl apply -f .kubernetes/grafana-service-monitor.tmp.yaml;
           if ($LastExitCode -ne 0) 
           { 
               throw "error";
