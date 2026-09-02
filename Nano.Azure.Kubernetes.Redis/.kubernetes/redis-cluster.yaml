@@ -7,9 +7,6 @@ spec:
   clusterSize: %KUBERNETES_REPLICA_COUNT%
   kubernetesConfig:
     image: quay.io/opstree/redis:v%REDIS_VERSION%
-    redisSecret:
-      name: %APP_NAME%-auth
-      key: password
     resources:
       requests:
         cpu: %KUBERNETES_CPU_REQUEST%

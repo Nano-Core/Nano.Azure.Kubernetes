@@ -7,6 +7,7 @@
 ## Table of Contents
 * **[Summary](#summary)**  
 * **[Registration](#registration)**  
+  * **[Database Support](#database-support)**  
   * **[High Availability](#high-availability)**  
   * **[Hardened Security](#hardened-security)**  
   * **[Persistence](#persistence)**  
@@ -48,6 +49,18 @@ kubectl port-forward $env:APP_NAME 3000 -n $env:KUBERNETES_NAMESPACE;
 ```
 
 Normally, this should not be necessary, as Grafana is already exposed externally.  
+
+## Database Support
+Grafana supports the following backend databases for dashboards, users, sessions.
+
+| Database   | Supported | Description                                                                                                           |
+| ---------- | :-------: | --------------------------------------------------------------------------------------------------------------------- |
+| MySQL      | ✅        | Popular open-source relational database. Set `SQL_TYPE` to `mysql`.                                                   |
+| PostgreSQL | ✅        | Advanced open-source relational database. Set `SQL_TYPE` to `postgres`.                                               |
+| SQL Server | ❌        | Not supported as a backend store. Choose MySQL or PostgreSQL for Grafana, even if other applications use SQL Server.  |
+
+This is separate from data sources. Grafana supports a wide range of SQL databases (including SQL Server) as data sources for building dashboards; the limitation above only applies to 
+Grafana's own storage backend.
 
 ### High Availability
 The Grafana deployment is configured with Kubernetes pod anti-affinity rules and topology spread constraints to encourage replicas to be scheduled across different cluster nodes. This helps 
@@ -172,6 +185,7 @@ Grafana has the following dependencies that must be deployed or otherwise satisf
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | 
 | **[Nano.Azure.Kubernetes](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.Kubernetes/README.md#nanoazurekubernetes)**                                        | The Azure Kubernetes Service (AKS).          |
 | **[Nano.Azure.MySql](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.MySql/README.md#nanoazuremysql)**                                                       | The MySQL server.                            |
+| **[Nano.Azure.PostgreSql](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.PostgreSql/README.md#nanoazurepostgresql)**                                         | The PostgreSQL server.                       |
 | **[Nano.Azure.GitHubRunner](https://github.com/Nano-Core/Nano.Azure/blob/master/Nano.Azure.GitHubRunner/README.md#nanoazuregithubrunner)**                                  | The GitHub Runner container job deployment.  |
 | **[Nano.Azure.Kubernetes.Gateway](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Gateway/README.md#nanoazurekubernetesgateway)**      | The Kubernetes Gateway deployment.           |
-| **[Nano.Azure.Kubernetes.Resend](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Resend/README.md#nanoazurekubernetesresend)**         | The Resend secret deployment.              |
+| **[Nano.Azure.Kubernetes.Resend](https://github.com/Nano-Core/Nano.Azure.Kubernetes/blob/master/Nano.Azure.Kubernetes.Resend/README.md#nanoazurekubernetesresend)**         | The Resend secret deployment.                |

@@ -104,13 +104,13 @@ extraVolumeMounts:
     mountPath: /var/tmp
 
 extraSecretMounts:
-  - name: db-auth
-    secretName: grafana-db-auth
-    mountPath: /etc/db/auth
+  - name: sql-auth
+    secretName: %APP_NAME%-sql-auth
+    mountPath: /etc/sql/auth
     readOnly: true
-  - name: db-ca-cert
-    secretName: grafana-db-ca-cert
-    mountPath: /etc/db/certs
+  - name: sql-ca-cert
+    secretName: %APP_NAME%-sql-ca-cert
+    mountPath: /etc/sql/certs
     readOnly: true
   - name: smtp-auth
     secretName: resend-auth
@@ -123,6 +123,8 @@ grafana.ini:
     protocol: http
     enable_gzip: true
     serve_from_sub_path: false
+  plugins:
+    preinstall_auto_update: false
   security:
     disable_initial_admin_creation: false
     cookie_secure: true
@@ -137,11 +139,10 @@ grafana.ini:
     host: %SQL_HOST%
     port: %SQL_PORT%
     name: %SQL_NAME%
-    user: $__file{/etc/db/auth/username}
-    password: $__file{/etc/db/auth/password}
-    isolation_level: READ-UNCOMMITTED
-    ssl_mode: skip-verify
-    ca_cert_path: /etc/db/certs/ca.pem
+    user: $__file{/etc/sql/auth/username}
+    password: $__file{/etc/sql/auth/password}
+    ssl_mode: %SQL_SSL_MODE%
+    ca_cert_path: /etc/sql/certs/ca.pem
   analytics:
     reporting_enabled: false
     check_for_updates: false
