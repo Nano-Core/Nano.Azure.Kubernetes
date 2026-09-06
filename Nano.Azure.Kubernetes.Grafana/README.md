@@ -50,7 +50,7 @@ kubectl port-forward $env:APP_NAME 3000 -n $env:KUBERNETES_NAMESPACE;
 
 Normally, this should not be necessary, as Grafana is already exposed externally.  
 
-## Database Support
+### Database Support
 Grafana supports the following backend databases for dashboards, users, sessions.
 
 | Database   | Supported | Description                                                                                                           |
@@ -144,7 +144,7 @@ The deployment updates the Azure Policy `allowedservicePortsInKubernetesClusterP
 
 | Port | Description                                             |
 | ---- | ------------------------------------------------------- |
-| 8080 | HTTP endpoint for Grafana web UI and dashboard access.  |
+| 3000 | HTTP endpoint for Grafana web UI and dashboard access.  |
 
 ### Grafana Sidecars
 The Grafana sidecars automatically discover and load configuration from Kubernetes ConfigMaps and Secrets without requiring a Grafana restart.

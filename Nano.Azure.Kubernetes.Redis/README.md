@@ -45,7 +45,7 @@ kubectl port-forward $env:APP_NAME-leader-0 6379 -n $env:KUBERNETES_NAMESPACE;
 To retrieve the deployed Redis cluster from the Custom Resource Definition (CRD), run.  
 
 ```powershell
-kubectl get rabbitmqclusters -n {{namespace}};
+kubectl get redisclusters -n $env:KUBERNETES_NAMESPACE;
 ```
 
 To see the available configuration options for the deployment, use the following commands.  

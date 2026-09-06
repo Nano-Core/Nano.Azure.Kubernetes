@@ -44,11 +44,11 @@ jobs:
           $env:KUBERNETES_CLUSTER = az aks list -g $env:AZURE_GROUP_KUBERNETES --query [0].name -o tsv;
           az aks get-credentials -g $env:AZURE_GROUP_KUBERNETES -n $env:KUBERNETES_CLUSTER -o none;
 
-      - name: Deploy SendGrid Secret
+      - name: Deploy Resend Secret
         shell: pwsh
         run: |
-          Get-Content .kubernetes/sendgrid-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/sendgrid-auth-secret.tmp.yaml;
-          kubectl apply -f .kubernetes/sendgrid-auth-secret.tmp.yaml;
+          Get-Content .kubernetes/resend-auth-secret.yaml | foreach { [Environment]::ExpandEnvironmentVariables($_) } | Set-Content .kubernetes/resend-auth-secret.tmp.yaml;
+          kubectl apply -f .kubernetes/resend-auth-secret.tmp.yaml;
  
           if ($LastExitCode -ne 0) 
           { 

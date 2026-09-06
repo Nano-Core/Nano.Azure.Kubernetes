@@ -9,6 +9,7 @@
 * **[Registration](#registration)**  
   * **[API Gateway](#api-gateway)**  
   * **[SSL Certificate](#ssl-certificate)**  
+  * **[TLS Policy](#tls-policy)**  
   * **[DNS Records](#dns-records)**  
 * **[Dependencies](#dependencies)**  
 
@@ -27,7 +28,7 @@ This deployment provisions an API Gateway and load balancer in Kubernetes, and a
 To retrieve the deployed public Gateway from the Custom Resource Definition (CRD), run.  
 
 ```powershell
-kubectl get gateways -n {{namespace}};
+kubectl get gateways -n $env:KUBERNETES_NAMESPACE;
 ```
 
 ### API Gateway
@@ -55,7 +56,7 @@ consistent public entry point for all applications without requiring manual DNS 
 The setup is idempotent, meaning records are created only when missing and safely reused otherwise.
 
 ### TLS Policy
-LS is configured through a `FrontendTLSPolicy` CRD applied to the public gateway listener. The policy uses the predefined 2023-06-S strict profile, enforcing a minimum of TLS 1.2 while allowing 
+TLS is configured through a `FrontendTLSPolicy` CRD applied to the public gateway listener. The policy uses the predefined 2023-06-S strict profile, enforcing a minimum of TLS 1.2 while allowing 
 TLS 1.2 and 1.3 only. It restricts cipher suites to ECDHE with GCM encryption, ensuring perfect forward secrecy via P-256 and P-384 curves.
 
 This hardened configuration achieves an A+ rating on SSL Labs and Mozilla Observatory. Unlike the default Azure ALB 2023-06 policy, which still includes CBC-based cipher suites, 
