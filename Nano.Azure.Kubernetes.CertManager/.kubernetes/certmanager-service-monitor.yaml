@@ -2,7 +2,7 @@ apiVersion: azmonitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: %APP_NAME%-monitor
-  namespace: apps
+  namespace: %KUBERNETES_NAMESPACE%
 spec:
   selector:
     matchLabels:

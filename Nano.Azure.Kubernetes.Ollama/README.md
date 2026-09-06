@@ -49,8 +49,8 @@ improve workload availability and resilience by reducing the risk of multiple Ol
 topology key to distribute pods across the cluster whenever possible.  
 
 ### Hardened Security
-The security context is hardened for production use. Privilege escalation is disabled, and the container is explicitly prevented from running as root (`runAsNonRoot: true`). All Linux 
-capabilities are dropped to minimize the attack surface, and the filesystem is set to read-only to prevent any runtime modifications.
+The security context is hardened for production use. Privilege escalation is disabled. All Linux capabilities are dropped to minimize the attack surface, and the filesystem is set to 
+read-only to prevent any runtime modifications.
 
 The container runs as the root user, and Ollama currently does not support configuring `runAsNonRoot: true`. A runtime-default seccomp profile is applied to restrict system calls and further 
 reduce exposure to kernel-level risks.  

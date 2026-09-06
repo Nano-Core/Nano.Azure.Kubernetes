@@ -48,7 +48,7 @@ kubectl port-forward $env:APP_NAME-cluster-0 15672 -n $env:KUBERNETES_NAMESPACE;
 To retrieve the deployed RabbitMQ cluster from the Custom Resource Definition (CRD), run.  
 
 ```powershell
-kubectl get rabbitmqclusters -n {{namespace}};
+kubectl get rabbitmqclusters -n $env:KUBERNETES_NAMESPACE;
 ```
 
 To see the available configuration options for the deployment, use the following commands.  

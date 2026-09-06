@@ -61,24 +61,6 @@ This ensures that all ClamAV instances operate with up-to-date threat intelligen
 
 Overall, the deployment provides fully automated virus definition updates with no operational overhead, ensuring continuous protection and consistent scanning across all replicas.
 
-### Automated Virus Database Updates
-The ClamAV deployment uses _FreshClam_ to ensure virus definitions are continuously updated without manual intervention. Each pod runs `freshclam` in daemon mode, which periodically checks 
-the official ClamAV mirrors and downloads updated signature databases directly into the `/data` persistent volume.
-
-This ensures all ClamAV instances operate with up-to-date threat intelligence while maintaining consistency across the StatefulSet.
-
-| Component           | Status     |
-| ------------------- | ---------- |
-| FreshClam running   | ✅ yes     |
-| Auto updates        | ✅ enabled |
-| Database download   | ✅ working |
-| Persistence (/data) | ✅ working |
-| Clamd sync          | ✅ working |
-| Health checks       | ✅ OK      |
-
-Overall, the deployment provides fully automated virus definition updates with no manual intervention required, ensuring continuous protection and consistent scanning capability across 
-all replicas.
-
 ### High Availability
 The ClamAV deployment is configured with Kubernetes pod anti-affinity and topology spread constraints to distribute replicas evenly across cluster nodes. This helps improve workload 
 resilience and reduces the risk of multiple instances being impacted by a single node failure. The topology spread configuration also helps balance pod placement across the cluster while 
@@ -126,7 +108,7 @@ resource usage.
 To inspect the currently allocated resources or review the HPA configuration, use the following command.  
 
 ```powershell
-kubectl dscribe hpa $env:APP_NAME -n $env:KUBERNETES_NAMESPACE;
+kubectl describe hpa $env:APP_NAME -n $env:KUBERNETES_NAMESPACE;
 ```
 
 ### Azure Policy
